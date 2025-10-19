@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "656756887482",
+    "project_id": "movie-2493b",
+    "storage_bucket": "movie-2493b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656756887482:android:e22b894b3c62e279099783",
+        "android_client_info": {
+          "package_name": "com.example.agrihawk_cars"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-vnXKdn6sBj-va9lhJvR73AyVWq_wtt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656756887482:android:30adeb11f205257f099783",
+        "android_client_info": {
+          "package_name": "com.example.el_doctor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-vnXKdn6sBj-va9lhJvR73AyVWq_wtt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656756887482:android:79ea10206e3d54ae099783",
+        "android_client_info": {
+          "package_name": "com.example.movie_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-vnXKdn6sBj-va9lhJvR73AyVWq_wtt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
