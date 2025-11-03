@@ -29,55 +29,59 @@ class SaveButton extends StatelessWidget {
           onPressed: isLoading
               ? null
               : () async {
-            if (selectedSection == null ||
-                amountController.text.trim().isEmpty ||
-                detailsController.text.trim().isEmpty) {
-              showErrorSnackBar(context, "جميع الحقول مطلوبة");
-              return;
-            }
+                  if (selectedSection == null ||
+                      amountController.text.trim().isEmpty ||
+                      detailsController.text.trim().isEmpty) {
+                    showErrorSnackBar(context, "جميع الحقول مطلوبة");
+                    return;
+                  }
 
-            final cubit = context.read<MoneyTransactionCubit>();
-            final cashCubit = context.read<CashBoxCubit>();
-            final amount = double.tryParse(amountController.text.trim());
-            if (amount == null) {
-              showErrorSnackBar(context, "ادخل مبلغ صحيح");
-              return;
-            }
+                  final cubit = context.read<MoneyTransactionCubit>();
+                  final cashCubit = context.read<CashBoxCubit>();
+                  final amount = double.tryParse(amountController.text.trim());
+                  if (amount == null) {
+                    showErrorSnackBar(context, "ادخل مبلغ صحيح");
+                    return;
+                  }
 
-            double currentCash;
-            try {
-              currentCash = await cashCubit.getCash();
-            } catch (_) {
-              showErrorSnackBar(context, "فشل جلب رصيد الخزنة");
-              return;
-            }
+                  double currentCash;
+                  try {
+                    currentCash = await cashCubit.getCash();
+                  } catch (_) {
+                    showErrorSnackBar(context, "فشل جلب رصيد الخزنة");
+                    return;
+                  }
 
-            // هنا حددنا default value لو isIncome null
-            final isIncome = selectedSection!.isIncome ?? true;
-            final newCash =
-            isIncome ? currentCash + amount : currentCash - amount;
+                  // هنا حددنا default value لو isIncome null
+                  final isIncome = selectedSection!.isIncome ?? true;
+                  final newCash = isIncome
+                      ? currentCash + amount
+                      : currentCash - amount;
 
-            cubit.addMoneyTransaction(
-              selectedSection!.name ?? "",
-              selectedSection!,
-              amount,
-              currentCash,
-              newCash,
-              detailsController.text.trim(),
-              selectedDate,
-              onSuccess: () {
-                cashCubit.updateCash(amount, isIncome: isIncome);
-                showSuccessSnackBar(
-                    context, "تم تحديث الرصيد بنجاح");
-              },
-            );
-          },
+                  cubit.addMoneyTransaction(
+                    selectedSection!.name ?? "",
+                    selectedSection!,
+                    selectedSection?.isIncome ?? false,
+                    amount,
+                    currentCash,
+                    newCash,
+                    detailsController.text.trim(),
+                    selectedDate,
+                    onSuccess: () {
+                      cashCubit.updateCash(amount, isIncome: isIncome);
+                      showSuccessSnackBar(context, "تم تحديث الرصيد بنجاح");
+                    },
+                  );
+                },
           child: isLoading
               ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2))
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
               : const Text("حفظ"),
         );
       },

@@ -1,3 +1,4 @@
+import 'package:el_doctor/ui/home_screen/add_product/add_product.dart';
 import 'package:flutter/material.dart';
 
 import '../add_transaction/add_transaction_widget.dart';
@@ -46,7 +47,7 @@ class TransactionButtonsRow extends StatelessWidget {
           onPressed: () => _showAddTransactionDialog(context, false),
           icon: Icon(Icons.remove, size: w * 0.015, color: Colors.white),
           label: Text(
-            "إضافة مصروف جديد",
+            "تحويل نقديه",
             style: TextStyle(color: Colors.white, fontSize: w * 0.013),
           ),
           style: ElevatedButton.styleFrom(
@@ -55,6 +56,7 @@ class TransactionButtonsRow extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
+        SizedBox(width: w * 0.015),
       ],
     );
   }

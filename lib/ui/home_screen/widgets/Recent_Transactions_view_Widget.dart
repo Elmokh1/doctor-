@@ -13,16 +13,13 @@ class RecentTransactionsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<MoneyTransactionCubit>();
 
-    return  Expanded(
+    return Expanded(
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 8,
-            ),
+            BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 8),
           ],
         ),
         padding: EdgeInsets.all(w * 0.015),
@@ -54,8 +51,8 @@ class RecentTransactionsWidget extends StatelessWidget {
                 ),
                 dataTextStyle: TextStyle(fontSize: w * 0.013),
                 columns: const [
-                  DataColumn(label: Text("رصيد الخزنة قبل")),
                   DataColumn(label: Text("رصيد الخزنة بعد")),
+                  DataColumn(label: Text("رصيد الخزنة قبل")),
                   DataColumn(label: Text("النوع")),
                   DataColumn(label: Text("المبلغ")),
                   DataColumn(label: Text("الوصف")),
@@ -63,19 +60,40 @@ class RecentTransactionsWidget extends StatelessWidget {
                 ],
                 rows: transactions.map((transaction) {
                   // هنا تحتاج تحسب الرصيد قبل وبعد المعاملة
-                  final beforeCash =transaction.cashBoxBefore??0.0; // استبدل بالرصيد الحقيقي قبل المعاملة
-                  final afterCash = transaction.cashBoxAfter??0.0; // استبدل بالرصيد بعد المعاملة
+                  final beforeCash =
+                      transaction.cashBoxBefore ??
+                      0.0; // استبدل بالرصيد الحقيقي قبل المعاملة
+                  final afterCash =
+                      transaction.cashBoxAfter ??
+                      0.0; // استبدل بالرصيد بعد المعاملة
 
                   return DataRow(
                     cells: [
+                      DataCell(
+                        afterCash > beforeCash
+                            ? Text(
+                                afterCash.toStringAsFixed(2),
+                                style: TextStyle(color: Colors.green),
+                              )
+                            : Text(
+                                afterCash.toStringAsFixed(2),
+                                style: TextStyle(color: Colors.red),
+                              ),
+                      ),
                       DataCell(Text(beforeCash.toStringAsFixed(2))),
-                      DataCell(Text(afterCash.toStringAsFixed(2))),
+
                       DataCell(Text(transaction.transactionType ?? "")),
-                      DataCell(Text(transaction.amount?.toStringAsFixed(2) ?? "0.00")),
+                      DataCell(
+                        Text(transaction.amount?.toStringAsFixed(2) ?? "0.00"),
+                      ),
                       DataCell(Text(transaction.transactionDetails ?? "")),
-                      DataCell(Text(transaction.transactionDate != null
-                          ? "${transaction.transactionDate!.day}/${transaction.transactionDate!.month}/${transaction.transactionDate!.year}"
-                          : "")),
+                      DataCell(
+                        Text(
+                          transaction.transactionDate != null
+                              ? "${transaction.transactionDate!.day}/${transaction.transactionDate!.month}/${transaction.transactionDate!.year}"
+                              : "",
+                        ),
+                      ),
                     ],
                   );
                 }).toList(),
@@ -85,6 +103,5 @@ class RecentTransactionsWidget extends StatelessWidget {
         ),
       ),
     );
-
   }
 }

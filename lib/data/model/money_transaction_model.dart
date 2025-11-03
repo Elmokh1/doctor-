@@ -3,6 +3,7 @@ class MoneyTransactionModel {
 
   String? id;
   double? amount;
+  bool? isIncome;
   double? cashBoxBefore;
   double? cashBoxAfter;
   DateTime? transactionDate;
@@ -13,6 +14,7 @@ class MoneyTransactionModel {
   MoneyTransactionModel({
     this.id,
     this.amount,
+    this.isIncome,
     this.cashBoxBefore,
     this.cashBoxAfter,
     this.transactionDate,
@@ -28,6 +30,7 @@ class MoneyTransactionModel {
     cashBoxBefore: (data?['cashBoxBefore'] as num?)?.toDouble(),
     cashBoxAfter: (data?['cashBoxAfter'] as num?)?.toDouble(),
     transactionType: data?['transactionType'],
+    isIncome: data?['isIncome'],
     transactionDetails: data?['transactionDetails'],
     transactionDate: data?["transactionDate"] != null
         ? DateTime.fromMillisecondsSinceEpoch(data?["transactionDate"])
@@ -41,6 +44,7 @@ class MoneyTransactionModel {
     return {
       'id': id,
       'amount': amount,
+      'isIncome': isIncome,
       'cashBoxBefore': cashBoxBefore,
       'cashBoxAfter': cashBoxAfter,
       'transactionType': transactionType,
