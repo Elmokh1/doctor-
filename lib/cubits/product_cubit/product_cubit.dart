@@ -36,6 +36,38 @@ class ProductCubit extends Cubit<ProductState> {
     );
   }
 
+  Future<void> changeProductQuantity({
+    required String productId,
+    required int amount,
+    required bool increase,  // true = زيادة ، false = نقصان
+  }) async {
+    emit(ProductLoading());
+
+    try {
+      final product = await MyDatabase.readProduct(productId);
+
+      if (product == null) {
+        emit(ProductError("المنتج غير موجود"));
+        return;
+      }
+
+      int current = product.qun ?? 0;
+      int updated = increase ? current + amount : current - amount;
+
+      if (updated < 0) updated = 0;
+
+      await MyDatabase.updateProductQuantity(
+        id: productId,
+        newQuantity: updated,
+      );
+
+      emit(ProductSuccess());
+    } catch (e) {
+      emit(ProductError("خطأ أثناء تعديل كمية المنتج"));
+    }
+  }
+
+
   Future<void> updateProductInfo({
     required String id,
     required String newName,
@@ -55,4 +87,15 @@ class ProductCubit extends Cubit<ProductState> {
       emit(ProductError("حدث خطأ أثناء تعديل المنتج"));
     }
   }
+  void loadProducts() {
+    emit(ProductLoading());
+    MyDatabase.getProductsRealTimeUpdate().listen(
+          (snapshot) {
+        final products = snapshot.docs.map((e) => e.data()).toList();
+        emit(ProductLoaded(products));
+      },
+      onError: (error) => emit(ProductError("حدث خطأ أثناء جلب المنتجات")),
+    );
+  }
+
 }

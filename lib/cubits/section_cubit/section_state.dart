@@ -1,4 +1,4 @@
-// money_transaction_state_state.dart
+// pay_vendor_invoice_state.dart
 import '../../data/model/sections_model.dart';
 
 abstract class SectionState {}

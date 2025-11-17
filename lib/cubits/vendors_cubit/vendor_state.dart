@@ -1,5 +1,4 @@
-// money_transaction_state_state.dart
-import '../../data/model/sections_model.dart';
+import '../../data/model/customer_model.dart';
 import '../../data/model/vendor_model.dart';
 
 abstract class VendorState {}
@@ -8,12 +7,12 @@ class VendorInitial extends VendorState {}
 
 class VendorLoading extends VendorState {}
 
-class VendorSuccess extends VendorState {}
-
 class VendorLoaded extends VendorState {
-  final List<VendorModel> sections;
-  VendorLoaded(this.sections);
+  final List<VendorModel> vendors;
+  VendorLoaded(this.vendors);
 }
+
+class VendorSuccess extends VendorState {}
 
 class VendorError extends VendorState {
   final String message;

@@ -1,10 +1,17 @@
+import 'package:el_doctor/cubits/invoice_counter/invoice_counter_cubit.dart';
+import 'package:el_doctor/data/model/invoice_counter.dart';
 import 'package:el_doctor/ui/customer/customer_screen.dart';
 import 'package:el_doctor/ui/home_screen/Home_screen.dart';
 import 'package:el_doctor/ui/transactions_list_page/transactions_list_page.dart';
 import 'package:el_doctor/ui/vendors/vendors_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:el_doctor/ui/invoice/invoice_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/vendor_pay_counter/vendor_pay_counter_cubit.dart';
+import '../../all_invoice_transaction_page/all_invoice_transaction_page.dart';
 import '../../inventory_Screen/inventory_screen.dart';
+import '../../pay_to_vendor/pay_screen.dart';
 import '../add_customer/add_customer.dart';
 import '../add_product/add_product.dart';
 import '../add_vendor/add_vendor.dart';
@@ -104,6 +111,47 @@ class SlideBarWidget extends StatelessWidget {
               _showAddCustomerDialog(context);
             },
           ),
+          InkWell(
+            child: SlideBarItem(Icons.monetization_on_rounded, " تحصيل "),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReceivedPaymentInvoiceScreen(),
+                ),
+              );            },
+          ),
+          InkWell(
+            child: SlideBarItem(Icons.payments_rounded, " دفع "),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PayVendorInvoiceScreen(),
+                ),
+              );            },
+          ),
+          InkWell(
+            child: SlideBarItem(Icons.payments_rounded, " فاتوره "),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddSaleInvoicePage(),
+                ),
+              );            },
+          ),
+          // InkWell(
+          //   child: SlideBarItem(Icons.payments_rounded, "تشغيل"),
+          //   onTap: () {
+          //     final vendorCounterCubit = context.read<VendorPayCounterCubit>();
+          //     vendorCounterCubit.addVendorPayCounter();
+          //     final invoiceCounterCubit = context.read<InvoiceCounterCubit>();
+          //     invoiceCounterCubit.addInvoiceCounter();
+          //
+          //   },
+          // ),
+
         ],
       ),
     );

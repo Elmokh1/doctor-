@@ -31,4 +31,22 @@ class CustomerCubit extends Cubit<CustomerState> {
       },
     );
   }
+
+  Future<void> updateCustomerBalance({
+    required String customerId,
+    required double newBalance,
+  }) async {
+    try {
+      await MyDatabase.updateCustomer(
+        id: customerId,
+        newBalance: newBalance,
+      );
+      print("✅ تم تحديث رصيد العميل بنجاح");
+      getCustomers();
+    } catch (e) {
+      print("❌ خطأ أثناء تحديث رصيد العميل: $e");
+      emit(CustomerError("حدث خطأ أثناء تحديث الرصيد"));
+    }
+  }
+
 }

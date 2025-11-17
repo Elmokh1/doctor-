@@ -15,7 +15,7 @@ class SlideBarItem extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 22),
           const SizedBox(width: 10),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 8)),
+          Text(title, style: const TextStyle(color: Colors.white, fontSize: 20)),
         ],
       ),
     );

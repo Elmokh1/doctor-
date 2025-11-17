@@ -31,4 +31,22 @@ class VendorCubit extends Cubit<VendorState> {
       },
     );
   }
+
+  Future<void> updateVendorBalance({
+    required String vendorId,
+    required double newBalance,
+  }) async {
+    try {
+      await MyDatabase.updateVendor(
+        id: vendorId,
+        newBalance: newBalance,
+      );
+      print("✅ تم تحديث رصيد العميل بنجاح");
+      getVendors();
+    } catch (e) {
+      print("❌ خطأ أثناء تحديث رصيد العميل: $e");
+      emit(VendorError("حدث خطأ أثناء تحديث الرصيد"));
+    }
+  }
+
 }
