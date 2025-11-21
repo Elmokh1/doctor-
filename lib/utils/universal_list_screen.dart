@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui'as ui;
 class UniversalListScreen<T> extends StatelessWidget {
   final String title;
   final List<T> items;
@@ -21,16 +22,23 @@ class UniversalListScreen<T> extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: ui.TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: Text(title),
           centerTitle: true,
+          backgroundColor: Colors.deepPurple,
         ),
         body: items.isEmpty
-            ? const Center(child: Text("لا يوجد بيانات بعد"))
-            : Padding(
+            ? Center(
+          child: Text(
+            "no_data".tr(),
+            style: const TextStyle(fontSize: 18),
+          ),
+        )
+            : SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
+          scrollDirection: Axis.vertical,
           child: Container(
             width: width,
             decoration: BoxDecoration(
@@ -38,30 +46,29 @@ class UniversalListScreen<T> extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: DataTable(
-              headingRowColor: MaterialStateProperty.all(Colors.blueGrey[50]),
-              columnSpacing: width * 0.3,
-              border: TableBorder.symmetric(
-                inside: const BorderSide(color: Colors.grey, width: 0.2),
-                outside: const BorderSide(color: Colors.grey, width: 0.5),
-              ),
-              columns: const [
+              headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+              columnSpacing: 50,
+              border: TableBorder.all(color: Colors.grey.shade300),
+              columns: [
                 DataColumn(
                   label: Text(
-                    'الاسم',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    'name'.tr(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
                 DataColumn(
                   label: Text(
-                    'الرصيد',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    'balance'.tr(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
               ],
@@ -75,11 +82,13 @@ class UniversalListScreen<T> extends StatelessWidget {
                       InkWell(
                         onTap: () => onTap(item),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          padding:
+                          const EdgeInsets.symmetric(vertical: 12),
                           child: Text(
                             name,
                             style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.bold),
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -88,7 +97,7 @@ class UniversalListScreen<T> extends StatelessWidget {
                       Text(
                         balance.toStringAsFixed(2),
                         style: TextStyle(
-                          color: balance > 0 ? Colors.red : Colors.green,
+                          color: balance > 0 ? Colors.green : Colors.red,
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
                         ),

@@ -1,145 +1,156 @@
-import 'package:el_doctor/ui/customer/customer_details/invoice_details_card.dart';
+import 'package:el_doctor/ui/customer/customer_details/payment_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui' as ui;
+import 'package:easy_localization/easy_localization.dart';
 
-import '../../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_cubit.dart';
-import '../../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_state.dart';
+import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_cubit.dart';
+import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_state.dart';
 import '../../../data/model/customer_model.dart';
+import 'invoice_preview.dart';
 
-class ReceivePaymentInvoiceView extends StatelessWidget {
+class CustomerTransactionSummaryView extends StatelessWidget {
   final CustomerModel customer;
 
-  const ReceivePaymentInvoiceView({super.key, required this.customer});
+  const CustomerTransactionSummaryView({super.key, required this.customer});
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd/MM/yyyy');
 
     return BlocProvider(
-      create: (_) => ReceivedPaymentInvoiceCubit()..loadInvoices(customer.id!),
+      create: (_) =>
+          CustomerTransactionSummaryCubit()..getTransactions(customer.id!),
       child: Scaffold(
-        backgroundColor: Colors.grey[200],
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text("فواتير الدفع: ${customer.name}"),
+          title: Text(tr("customer_transactions", args: [?customer.name])),
           centerTitle: true,
           backgroundColor: Colors.blueAccent,
         ),
-        body: BlocBuilder<ReceivedPaymentInvoiceCubit, ReceivedPaymentInvoiceState>(
-          builder: (context, state) {
-            if (state is ReceivedPaymentInvoiceLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body:
+            BlocBuilder<
+              CustomerTransactionSummaryCubit,
+              CustomerTransactionSummaryState
+            >(
+              builder: (context, state) {
+                if (state is CustomerTransactionSummaryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (state is ReceivedPaymentInvoiceError) {
-              return Center(child: Text(state.message));
-            }
+                if (state is CustomerTransactionSummaryError) {
+                  return Center(child: Text(state.message));
+                }
 
-            if (state is ReceivedPaymentInvoiceLoaded) {
-              final invoices = state.transactions;
+                if (state is CustomerTransactionSummaryLoaded) {
+                  final data = state.transactions;
 
-              if (invoices.isEmpty) {
-                return const Center(
-                  child: Text(
-                    "لا توجد فواتير لهذا العميل",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                );
-              }
+                  if (data.isEmpty) {
+                    return Center(
+                      child: Text(
+                        tr("no_transactions"),
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    );
+                  }
 
-              return Center(
-                child: Container(
-                  width: 900,
-                  padding: const EdgeInsets.all(16),
-                  child: ListView.separated(
-                    itemCount: invoices.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final invoice = invoices[index];
-
-                      return Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
+                  return Directionality(
+                    textDirection: ui.TextDirection.ltr,
+                    child: Center(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        child: DataTable(
+                          headingRowColor: MaterialStateProperty.all(
+                            Colors.blue.shade50,
+                          ),
+                          border: TableBorder.all(color: Colors.black12),
+                          columns: [
+                            DataColumn(label: Text(tr("type"))),
+                            DataColumn(label: Text(tr("date"))),
+                            DataColumn(label: Text(tr("number"))),
+                            DataColumn(label: Text(tr("memo"))),
+                            DataColumn(label: Text(tr("debt"))),
+                            DataColumn(label: Text(tr("credit"))),
+                            DataColumn(label: Text(tr("balance"))),
                           ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // رأس الفاتورة
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                "فاتورة دفع رقم: ${invoice.id}",
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueAccent,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // تفاصيل الفاتورة
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "المبلغ: ${invoice.amount?.toStringAsFixed(2) ?? '0'} جنيه",
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                Text(
-                                  "التاريخ: ${invoice.dateTime != null ? dateFormat.format(invoice.dateTime!) : '--'}",
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => InvoiceDetailsCard(invoice: invoice),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blueAccent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                          rows: data.map((t) {
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    t.transactionType == 'مبيعات'
+                                        ? tr("invoice")
+                                        : t.transactionType == 'تحصيل'
+                                        ? tr("payment")
+                                        : t.transactionType == 'مرتجع'
+                                        ? tr("credit_transaction")
+                                        : "-",
                                   ),
                                 ),
-                                child: const Text("عرض التفاصيل"),
-                              ),
-                            ),
-                          ],
+                                DataCell(
+                                  Text(
+                                    t.dateTime != null
+                                        ? dateFormat.format(t.dateTime!)
+                                        : '--',
+                                  ),
+                                ),
+                                DataCell(
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            if (t.transactionType == "تحصيل") {
+                                              return ReceivePaymentByIdScreen(
+                                                paymentId: t.invoiceId!,
+                                                customerId: t.customerId!,
+                                              );
+                                            }
+                                            return CustomerInvoiceByIdScreen(
+                                              invoiceId: t.invoiceId!,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
+                                    child: Text(t.invoiceId ?? "-"),
+                                  ),
+                                ),
+                                DataCell(Text(t.notes ?? "-")),
+                                t.transactionType == 'مبيعات'
+                                    ? DataCell(
+                                        Text(
+                                          "${t.amount?.toStringAsFixed(2) ?? '0'}",
+                                        ),
+                                      )
+                                    : DataCell(Text("")),
+                                t.transactionType == 'مبيعات'
+                                    ? DataCell(Text(""))
+                                    : DataCell(
+                                        Text(
+                                          "${t.amount?.toStringAsFixed(2) ?? '0'}",
+                                        ),
+                                      ),
+                                DataCell(
+                                  Text(
+                                    "${t.debtAfter?.toStringAsFixed(2) ?? '0'}",
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              );
-            }
+                      ),
+                    ),
+                  );
+                }
 
-            return const SizedBox();
-          },
-        ),
+                return const SizedBox();
+              },
+            ),
       ),
     );
   }

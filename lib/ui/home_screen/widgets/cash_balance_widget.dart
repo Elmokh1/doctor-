@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../cubits/cash_box_cubit/cash_box_cubit.dart';
 import '../../../cubits/cash_box_cubit/cash_box_state.dart';
 
 class CashBalanceWidget extends StatelessWidget {
+  const CashBalanceWidget({super.key});
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<CashBoxCubit, CashBoxState>(
@@ -20,9 +23,9 @@ class CashBalanceWidget extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Text(
-              "الرصيد الحالي",
-              style: TextStyle(
+            Text(
+              "current_balance".tr(),
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1E3A8A),
               ),

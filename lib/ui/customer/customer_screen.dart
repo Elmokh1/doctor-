@@ -1,6 +1,7 @@
-import 'package:el_doctor/ui/invoice/invoice_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import '../../../cubits/customer_cubit/customer_cubit.dart';
 import '../../../cubits/customer_cubit/customer_state.dart';
 import '../../../data/model/customer_model.dart';
@@ -27,7 +28,7 @@ class CustomerScreen extends StatelessWidget {
           final customers = state.customers;
 
           return UniversalListScreen<CustomerModel>(
-            title: "قائمة العملاء",
+            title: tr("customers_list"),
             items: customers,
             getName: (c) => c.name ?? "-",
             getBalance: (c) => c.openingBalance ?? 0.0,
@@ -35,18 +36,21 @@ class CustomerScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ReceivePaymentInvoiceView(customer: c),
+                  builder: (context) =>
+                      CustomerTransactionSummaryView(customer: c),
                 ),
               );
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("تم الضغط على ${c.name ?? "-"}")),
+                SnackBar(
+                  content: Text(tr("clicked_on_customer", args: [c.name ?? "-"])),
+                ),
               );
             },
           );
         }
 
-        return const Scaffold(
-          body: Center(child: Text("حدث خطأ أثناء تحميل البيانات")),
+        return Scaffold(
+          body: Center(child: Text(tr("loading_error"))),
         );
       },
     );

@@ -3,6 +3,7 @@ import 'package:el_doctor/ui/home_screen/add_transaction/widgets/save_button.dar
 import 'package:el_doctor/ui/home_screen/add_transaction/widgets/section_dropdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../cubits/money_transaction_cubit/money_transaction_cubit.dart';
 import '../../../cubits/money_transaction_cubit/money_transaction_state_state.dart';
@@ -13,7 +14,7 @@ import '../../../utils/snack_bar.dart';
 class AddMoneyTransactionDialog extends StatefulWidget {
   final bool isIncome;
 
-  const AddMoneyTransactionDialog({required this.isIncome});
+  const AddMoneyTransactionDialog({required this.isIncome, super.key});
 
   @override
   State<AddMoneyTransactionDialog> createState() =>
@@ -38,14 +39,14 @@ class _AddMoneyTransactionDialogState extends State<AddMoneyTransactionDialog> {
       listener: (context, state) {
         if (state is MoneyTransactionSuccess) {
           Navigator.pop(context);
-          showSuccessSnackBar(context, "تم إضافة الحركة بنجاح");
+          showSuccessSnackBar(context, "transaction_added_success".tr());
         } else if (state is MoneyTransactionError) {
           showErrorSnackBar(context, state.message);
         }
       },
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("إضافة حركة مالية"),
+        title: Text("add_money_transaction".tr()),
         content: SingleChildScrollView(
           child: Column(
             children: [
@@ -66,7 +67,7 @@ class _AddMoneyTransactionDialogState extends State<AddMoneyTransactionDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text("cancel".tr()),
           ),
           SaveButton(
             amountController: _amountController,

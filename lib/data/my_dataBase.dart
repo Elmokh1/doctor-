@@ -12,16 +12,19 @@ import 'package:el_doctor/data/model/pay_vendor.dart';
 import 'package:el_doctor/data/model/pay_vendor.dart';
 import 'package:el_doctor/data/model/pay_vendor.dart';
 import 'package:el_doctor/data/model/product_model.dart';
+import 'package:el_doctor/data/model/proudct_transaction_model.dart';
 import 'package:el_doctor/data/model/receive_payment.dart';
 import 'model/all_invoice_for_customer.dart';
 import 'model/buy_counter.dart';
 import 'model/cash_box_model.dart';
 import 'model/customer_model.dart';
+import 'model/customer_transaction_summary_model.dart';
 import 'model/money_transaction_model.dart';
 import 'model/sale_counter.dart';
 import 'model/sections_model.dart';
 import 'model/vendor_counter.dart';
 import 'model/vendor_model.dart';
+import 'model/vendor_transaction_summary_model.dart';
 
 class MyDatabase {
   // ----------------------
@@ -256,19 +259,79 @@ class MyDatabase {
       rethrow;
     }
   }
+
   static Future<void> updateProductQuantity({
     required String id,
     required int newQuantity,
   }) async {
     try {
-      await getProductCollection().doc(id).update({
-        'qun': newQuantity,
-      });
+      await getProductCollection().doc(id).update({'qun': newQuantity});
       print("✔ تم تحديث كمية المنتج");
     } catch (e) {
       print("❌ خطأ أثناء تحديث كمية المنتج: $e");
       rethrow;
     }
+  }
+
+  // Product Transaction
+
+  static CollectionReference<ProductTransactionModel>
+  productTransactionCollection(String pId) {
+    return getProductCollection()
+        .doc(pId)
+        .collection(ProductTransactionModel.collectionName)
+        .withConverter<ProductTransactionModel>(
+          fromFirestore: (snapshot, options) =>
+              ProductTransactionModel.fromFireStore(snapshot.data()),
+          toFirestore: (transaction, options) => transaction.toFireStore(),
+        );
+  }
+
+  // --------------------------------------
+  //  Add Transaction
+  // --------------------------------------
+  static Future<void> addProductTransaction(
+    String productId,
+    ProductTransactionModel transaction,
+  ) async {
+    try {
+      final docRef = productTransactionCollection(productId).doc();
+      transaction.id = docRef.id;
+      await docRef.set(transaction);
+    } catch (e, s) {
+      print("StackTrace: $s");
+      rethrow;
+    }
+  }
+
+  // --------------------------------------
+  //  Read Single Transaction
+  // --------------------------------------
+  static Future<ProductTransactionModel?> readProductTransaction(
+    String productId,
+    String transactionId,
+  ) async {
+    return (await productTransactionCollection(
+      productId,
+    ).doc(transactionId).get()).data();
+  }
+
+  // --------------------------------------
+  //  Stream All Transactions
+  // --------------------------------------
+  static Stream<QuerySnapshot<ProductTransactionModel>>
+  getProductTransactionsStream(String productId) {
+    return productTransactionCollection(productId).snapshots();
+  }
+
+  // --------------------------------------
+  //  Delete Transaction
+  // --------------------------------------
+  static Future<void> deleteProductTransaction(
+    String productId,
+    String transactionId,
+  ) {
+    return productTransactionCollection(productId).doc(transactionId).delete();
   }
 
   //
@@ -360,10 +423,10 @@ class MyDatabase {
   }
 
   static Future<void> addVendorInvoice(
-      PayVendorModel vendorPayment,
-      String vendorId,      // ← الفيندور زي ما هو
-      String invoiceId,     // ← الكاونتر الجديد Manual ID
-      ) async {
+    PayVendorModel vendorPayment,
+    String vendorId, // ← الفيندور زي ما هو
+    String invoiceId, // ← الكاونتر الجديد Manual ID
+  ) async {
     final docRef = vendorInvoiceCollection(vendorId).doc(invoiceId);
 
     vendorPayment.id = invoiceId; // نخزن ID الفاتورة نفسه
@@ -378,9 +441,7 @@ class MyDatabase {
     return (await vendorInvoiceCollection(vId).doc(id).get()).data();
   }
 
-  static Future<List<PayVendorModel>> getVendorInvoices(
-      String vId,
-      ) async {
+  static Future<List<PayVendorModel>> getVendorInvoices(String vId) async {
     final snap = await vendorInvoiceCollection(
       vId,
     ).orderBy('dateTime', descending: true).get();
@@ -410,6 +471,17 @@ class MyDatabase {
           toFirestore: (receivePayment, _) => receivePayment.toFireStore(),
         )
         .snapshots();
+  }
+
+  static Future<List<PayVendorModel>> getVendorPaymentById(
+    String vendorId,
+    String id,
+  ) async {
+    final snap = await vendorInvoiceCollection(
+      vendorId,
+    ).where('id', isEqualTo: id).get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
 
   //
@@ -467,6 +539,72 @@ class MyDatabase {
     print("✅ تم تحديث بيانات العميل بنجاح ( الرصيد)");
   }
 
+  //Customer Transaction Summary
+  static CollectionReference<CustomerTransactionSummaryModel>
+  getCustomerTransactionsSummaryCollection() {
+    return FirebaseFirestore.instance
+        .collection(CustomerTransactionSummaryModel.collectionName)
+        .withConverter<CustomerTransactionSummaryModel>(
+          fromFirestore: (snapshot, options) =>
+              CustomerTransactionSummaryModel.fromFireStore(snapshot.data()),
+          toFirestore: (transaction, options) => transaction.toFireStore(),
+        );
+  }
+
+  static Future<void> addCustomerTransactionSummary(
+    CustomerTransactionSummaryModel transaction,
+  ) async {
+    // توليد docRef عشوائي
+    final docRef = getCustomerTransactionsSummaryCollection().doc();
+    transaction.id = docRef.id; // assign the generated id
+    await docRef.set(transaction);
+    print("✅ تم حفظ الحركة بنجاح بالـ ID: ${docRef.id}");
+  }
+
+  static Future<CustomerTransactionSummaryModel?>
+  readCustomerTransactionSummary(String transactionId) async {
+    return (await getCustomerTransactionsSummaryCollection()
+            .doc(transactionId)
+            .get())
+        .data();
+  }
+
+  static Future<List<CustomerTransactionSummaryModel>>
+  getAllCustomerTransactionsSummary() async {
+    final snap = await getCustomerTransactionsSummaryCollection()
+        .orderBy('dateTime', descending: true)
+        .get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
+  static Stream<QuerySnapshot<CustomerTransactionSummaryModel>>
+  getCustomerTransactionsSummaryStream(String customerId) {
+    return getCustomerTransactionsSummaryCollection()
+        .where("customerId", isEqualTo: customerId)
+        .orderBy('dateTime', descending: true)
+        .snapshots();
+  }
+
+  static Future<void> deleteCustomerTransactionSummary(
+    String transactionId,
+  ) async {
+    await getCustomerTransactionsSummaryCollection()
+        .doc(transactionId)
+        .delete();
+    print("✅ تم حذف الحركة بنجاح بالـ ID: $transactionId");
+  }
+
+  static Future<void> updateCustomerTransactionSummary(
+    CustomerTransactionSummaryModel transaction,
+  ) async {
+    if (transaction.id == null) throw Exception("Transaction ID is null");
+    await getCustomerTransactionsSummaryCollection()
+        .doc(transaction.id)
+        .update(transaction.toFireStore());
+    print("✅ تم تحديث الحركة بنجاح بالـ ID: ${transaction.id}");
+  }
+
   // Customer Invoice
 
   static CollectionReference<ReceivePaymentModel> customerInvoiceCollection(
@@ -483,16 +621,17 @@ class MyDatabase {
   }
 
   static Future<void> addInvoice(
-      ReceivePaymentModel receivePayment,
-      String customerId,      // ← الفيندور زي ما هو
-      String invoiceId,     // ← الكاونتر الجديد Manual ID
-      ) async {
+    ReceivePaymentModel receivePayment,
+    String customerId, // ← الفيندور زي ما هو
+    String invoiceId, // ← الكاونتر الجديد Manual ID
+  ) async {
     final docRef = customerInvoiceCollection(customerId).doc(invoiceId);
 
     receivePayment.id = invoiceId; // نخزن ID الفاتورة نفسه
 
     return await docRef.set(receivePayment);
   }
+
   static Future<ReceivePaymentModel?> readReceivedPayment(
     String cId,
     String id,
@@ -544,6 +683,17 @@ class MyDatabase {
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
 
+  static Future<List<ReceivePaymentModel>> getCustomerPaymentById(
+    String customerId,
+    String id,
+  ) async {
+    final snap = await customerInvoiceCollection(
+      customerId,
+    ).where('id', isEqualTo: id).get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
   // Counters
   static CollectionReference<InvoiceCounterModel>
   getInvoiceCounterCollection() {
@@ -587,7 +737,6 @@ class MyDatabase {
     }
   }
 
-
   static Stream<QuerySnapshot<InvoiceCounterModel>> getInvoiceCountersStream() {
     return getInvoiceCounterCollection().snapshots();
   }
@@ -602,16 +751,16 @@ class MyDatabase {
     }
   }
 
-
   // Vendor Pay Counter
-  static CollectionReference<VendorPayCounterModel> getVendorPayCounterCollection() {
+  static CollectionReference<VendorPayCounterModel>
+  getVendorPayCounterCollection() {
     return FirebaseFirestore.instance
         .collection(VendorPayCounterModel.collectionName)
         .withConverter<VendorPayCounterModel>(
-      fromFirestore: (snapshot, options) =>
-          VendorPayCounterModel.fromFireStore(snapshot.data()),
-      toFirestore: (counter, options) => counter.toFireStore(),
-    );
+          fromFirestore: (snapshot, options) =>
+              VendorPayCounterModel.fromFireStore(snapshot.data()),
+          toFirestore: (counter, options) => counter.toFireStore(),
+        );
   }
 
   static Future<void> addVendorPayCounter(VendorPayCounterModel counter) async {
@@ -641,11 +790,14 @@ class MyDatabase {
       await docRef.update({'counter': newCounter});
     } else {
       final docRef = collection.doc();
-      await docRef.set(VendorPayCounterModel(id: docRef.id, counter: newCounter));
+      await docRef.set(
+        VendorPayCounterModel(id: docRef.id, counter: newCounter),
+      );
     }
   }
 
-  static Stream<QuerySnapshot<VendorPayCounterModel>> getVendorPayCountersStream() {
+  static Stream<QuerySnapshot<VendorPayCounterModel>>
+  getVendorPayCountersStream() {
     return getVendorPayCounterCollection().snapshots();
   }
 
@@ -664,10 +816,10 @@ class MyDatabase {
     return FirebaseFirestore.instance
         .collection(SaleCounterModel.collectionName)
         .withConverter<SaleCounterModel>(
-      fromFirestore: (snapshot, options) =>
-          SaleCounterModel.fromFireStore(snapshot.data()),
-      toFirestore: (counter, options) => counter.toFireStore(),
-    );
+          fromFirestore: (snapshot, options) =>
+              SaleCounterModel.fromFireStore(snapshot.data()),
+          toFirestore: (counter, options) => counter.toFireStore(),
+        );
   }
 
   static Future<void> addSaleCounter(SaleCounterModel counter) async {
@@ -720,10 +872,10 @@ class MyDatabase {
     return FirebaseFirestore.instance
         .collection(BuyCounterModel.collectionName)
         .withConverter<BuyCounterModel>(
-      fromFirestore: (snapshot, options) =>
-          BuyCounterModel.fromFireStore(snapshot.data()),
-      toFirestore: (counter, options) => counter.toFireStore(),
-    );
+          fromFirestore: (snapshot, options) =>
+              BuyCounterModel.fromFireStore(snapshot.data()),
+          toFirestore: (counter, options) => counter.toFireStore(),
+        );
   }
 
   static Future<void> addBuyCounter(BuyCounterModel counter) async {
@@ -773,19 +925,24 @@ class MyDatabase {
 
   //فواتير العملاء
 
-  static CollectionReference<CustomerInvoiceModel> getCustomerInvoiceCollection() {
+  static CollectionReference<CustomerInvoiceModel>
+  getCustomerInvoiceCollection() {
     return FirebaseFirestore.instance
-        .collection(CustomerInvoiceModel.collectionName) // اسم الكوليكشن الجديد برا أي كولكشن
+        .collection(
+          CustomerInvoiceModel.collectionName,
+        ) // اسم الكوليكشن الجديد برا أي كولكشن
         .withConverter<CustomerInvoiceModel>(
-      fromFirestore: (snapshot, options) =>
-          CustomerInvoiceModel.fromFireStore(snapshot.data()),
-      toFirestore: (invoice, options) => invoice.toFireStore(),
-    );
+          fromFirestore: (snapshot, options) =>
+              CustomerInvoiceModel.fromFireStore(snapshot.data()),
+          toFirestore: (invoice, options) => invoice.toFireStore(),
+        );
   }
 
   // إضافة فاتورة جديدة
   static Future<void> addCustomerInvoice(
-      CustomerInvoiceModel invoice, String invoiceId) async {
+    CustomerInvoiceModel invoice,
+    String invoiceId,
+  ) async {
     final docRef = getCustomerInvoiceCollection().doc(invoiceId);
     invoice.id = invoiceId;
     await docRef.set(invoice);
@@ -793,7 +950,9 @@ class MyDatabase {
   }
 
   // قراءة فاتورة معينة
-  static Future<CustomerInvoiceModel?> readCustomerInvoice(String invoiceId) async {
+  static Future<CustomerInvoiceModel?> readCustomerInvoice(
+    String invoiceId,
+  ) async {
     return (await getCustomerInvoiceCollection().doc(invoiceId).get()).data();
   }
 
@@ -806,22 +965,165 @@ class MyDatabase {
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
 
-  // Stream للحصول على الفواتير بشكل مباشر عند أي تحديث
-  static Stream<QuerySnapshot<CustomerInvoiceModel>> getCustomerInvoiceStream(String customerId) {
+  static Future<List<CustomerInvoiceModel>> getCustomerInvoicesById(
+    String id,
+  ) async {
+    final snap = await getCustomerInvoiceCollection()
+        .where('id', isEqualTo: id)
+        .get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
+  static Stream<QuerySnapshot<CustomerInvoiceModel>> getCustomerInvoiceStream(
+    String customerId,
+  ) {
     return getCustomerInvoiceCollection()
         .where("customerId", isEqualTo: customerId)
         .snapshots();
   }
-  // حذف فاتورة
+
   static Future<void> deleteCustomerInvoice(String invoiceId) async {
     await getCustomerInvoiceCollection().doc(invoiceId).delete();
     print("✅ تم حذف الفاتورة بنجاح بالـ ID: $invoiceId");
   }
 
   // تحديث فاتورة (مثلاً تعديل الخصم أو المديونية بعد)
-  static Future<void> updateCustomerInvoice(CustomerInvoiceModel invoice) async {
+  static Future<void> updateCustomerInvoice(
+    CustomerInvoiceModel invoice,
+  ) async {
     if (invoice.id == null) throw Exception("Invoice ID is null");
-    await getCustomerInvoiceCollection().doc(invoice.id).update(invoice.toFireStore());
+    await getCustomerInvoiceCollection()
+        .doc(invoice.id)
+        .update(invoice.toFireStore());
     print("✅ تم تحديث الفاتورة بنجاح بالـ ID: ${invoice.id}");
+  }
+
+  static CollectionReference<CustomerInvoiceModel> getVendorBillCollection() {
+    return FirebaseFirestore.instance
+        .collection('VendorBill') // اسم الكوليكشن الجديد
+        .withConverter<CustomerInvoiceModel>(
+          fromFirestore: (snapshot, options) =>
+              CustomerInvoiceModel.fromFireStore(snapshot.data()),
+          toFirestore: (bill, options) => bill.toFireStore(),
+        );
+  }
+
+  //vendor Bill
+
+  static Future<void> addVendorBill(
+    CustomerInvoiceModel bill,
+    String billId,
+  ) async {
+    final docRef = getVendorBillCollection().doc(billId);
+    bill.id = billId;
+    await docRef.set(bill);
+    print("✅ تم حفظ فاتورة المورد بنجاح بالـ ID: $billId");
+  }
+
+  static Future<CustomerInvoiceModel?> readVendorBill(String billId) async {
+    return (await getVendorBillCollection().doc(billId).get()).data();
+  }
+
+  static Future<List<CustomerInvoiceModel>> getAllVendorBills() async {
+    final snap = await getVendorBillCollection()
+        .orderBy('dateTime', descending: true)
+        .get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
+  static Stream<QuerySnapshot<CustomerInvoiceModel>> getVendorBillStream() {
+    return getVendorBillCollection().snapshots();
+  }
+
+  static Future<void> deleteVendorBill(String billId) async {
+    await getVendorBillCollection().doc(billId).delete();
+    print("✅ تم حذف فاتورة المورد بنجاح بالـ ID: $billId");
+  }
+
+  static Future<void> updateVendorBill(CustomerInvoiceModel bill) async {
+    if (bill.id == null) throw Exception("Bill ID is null");
+    await getVendorBillCollection().doc(bill.id).update(bill.toFireStore());
+    print("✅ تم تحديث فاتورة المورد بنجاح بالـ ID: ${bill.id}");
+  }
+
+  static Future<List<CustomerInvoiceModel>> getVendorBillById(String id) async {
+    final snap = await getVendorBillCollection()
+        .where('id', isEqualTo: id)
+        .get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
+  // Vendor Transaction Summary
+  static CollectionReference<VendorTransactionSummaryModel>
+  getVendorTransactionsSummaryCollection() {
+    return FirebaseFirestore.instance
+        .collection(VendorTransactionSummaryModel.collectionName)
+        .withConverter<VendorTransactionSummaryModel>(
+          fromFirestore: (snapshot, options) =>
+              VendorTransactionSummaryModel.fromFireStore(snapshot.data()),
+          toFirestore: (transaction, options) => transaction.toFireStore(),
+        );
+  }
+
+  // إضافة حركة مورد جديدة
+  static Future<void> addVendorTransactionSummary(
+    VendorTransactionSummaryModel transaction,
+  ) async {
+    final docRef = getVendorTransactionsSummaryCollection()
+        .doc(); // توليد ID تلقائي
+    transaction.id = docRef.id;
+    await docRef.set(transaction);
+    print("✅ تم حفظ الحركة بنجاح بالـ ID: ${docRef.id}");
+  }
+
+  // قراءة حركة معينة
+  static Future<VendorTransactionSummaryModel?> readVendorTransactionSummary(
+    String transactionId,
+  ) async {
+    return (await getVendorTransactionsSummaryCollection()
+            .doc(transactionId)
+            .get())
+        .data();
+  }
+
+  // الحصول على كل الحركات
+  static Future<List<VendorTransactionSummaryModel>>
+  getAllVendorTransactionsSummary() async {
+    final snap = await getVendorTransactionsSummaryCollection()
+        .orderBy('dateTime', descending: true)
+        .get();
+
+    return snap.docs.map((e) => e.data()..id = e.id).toList();
+  }
+
+  // Stream للحصول على الحركات بشكل مباشر عند أي تحديث
+  static Stream<QuerySnapshot<VendorTransactionSummaryModel>>
+  getVendorTransactionsSummaryStream(String vendorId) {
+    return getVendorTransactionsSummaryCollection()
+        .where("vendorId", isEqualTo: vendorId)
+        .orderBy('dateTime', descending: true)
+        .snapshots();
+  }
+
+  // حذف حركة
+  static Future<void> deleteVendorTransactionSummary(
+    String transactionId,
+  ) async {
+    await getVendorTransactionsSummaryCollection().doc(transactionId).delete();
+    print("✅ تم حذف الحركة بنجاح بالـ ID: $transactionId");
+  }
+
+  // تحديث حركة
+  static Future<void> updateVendorTransactionSummary(
+    VendorTransactionSummaryModel transaction,
+  ) async {
+    if (transaction.id == null) throw Exception("Transaction ID is null");
+    await getVendorTransactionsSummaryCollection()
+        .doc(transaction.id)
+        .update(transaction.toFireStore());
+    print("✅ تم تحديث الحركة بنجاح بالـ ID: ${transaction.id}");
   }
 }

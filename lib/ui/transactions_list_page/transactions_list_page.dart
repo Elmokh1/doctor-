@@ -2,6 +2,7 @@ import 'package:el_doctor/data/my_dataBase.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../data/model/money_transaction_model.dart';
 
 class TransactionsListPage extends StatefulWidget {
@@ -18,14 +19,13 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
   DateTime? fromDate;
   DateTime? toDate;
 
-
-
   Future<void> pickDateRange() async {
     final pickedFrom = await showDatePicker(
       context: context,
       initialDate: fromDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
+      locale: context.locale, // تحديد اللغة حسب Easy Localization
     );
 
     if (pickedFrom == null) return;
@@ -35,6 +35,7 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
       initialDate: toDate ?? pickedFrom,
       firstDate: pickedFrom,
       lastDate: DateTime(2100),
+      locale: context.locale,
     );
 
     if (pickedTo == null) return;
@@ -48,17 +49,20 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
   String formatDateFromMillis(int? millis) {
     if (millis == null) return "";
     final date = DateTime.fromMillisecondsSinceEpoch(millis);
-    return DateFormat("dd/MM/yyyy").format(date);
+    return DateFormat.yMMMd(context.locale.toString()).format(date);
+  }
+
+  String formatDate(DateTime date) {
+    return DateFormat("dd MMMM yyyy", context.locale.toString()).format(date);
   }
 
   @override
   Widget build(BuildContext context) {
-    print(widget.isIncome);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "الحركات المالية",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          "financial_transactions".tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
@@ -91,8 +95,8 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                   children: [
                     Text(
                       fromDate == null || toDate == null
-                          ? "اختر فترة زمنية"
-                          : "من ${DateFormat("dd MMMM yyyy", "ar").format(fromDate!)} إلى ${DateFormat("dd MMMM yyyy", "ar").format(toDate!)}",
+                          ? "select_date_range".tr()
+                          : "${"from".tr()} ${formatDate(fromDate!)} ${"to".tr()} ${formatDate(toDate!)}",
                       style: const TextStyle(fontSize: 16),
                     ),
                     const Icon(Icons.date_range),
@@ -112,10 +116,11 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                   : MyDatabase.getAllTransactionsStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  print(snapshot.error);
                   return Center(
-                    child: Text('حدث خطأ: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.red)),
+                    child: Text(
+                      'error_occurred'.tr(args: [snapshot.error.toString()]),
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -127,13 +132,13 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                     .where((tx) => tx.isIncome == widget.isIncome)
                     .toList() ??
                     [];
-                print(widget.isIncome);
 
                 if (transactions.isEmpty) {
-                  print(widget.isIncome);
-                  return const Center(
-                    child: Text("لا توجد بيانات",
-                        style: TextStyle(color: Colors.grey, fontSize: 20)),
+                  return Center(
+                    child: Text(
+                      "no_data".tr(),
+                      style: const TextStyle(color: Colors.grey, fontSize: 20),
+                    ),
                   );
                 }
 
@@ -141,15 +146,16 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                   scrollDirection: Axis.horizontal,
                   child: SingleChildScrollView(
                     child: DataTable(
-                      headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
+                      headingRowColor:
+                      MaterialStateProperty.all(Colors.blue.shade50),
                       border: TableBorder.all(color: Colors.grey.shade300),
-                      columns: const [
-                        DataColumn(label: Text("المبلغ")),
-                        DataColumn(label: Text("النوع")),
-                        DataColumn(label: Text("الخزنة قبل")),
-                        DataColumn(label: Text("الخزنة بعد")),
-                        DataColumn(label: Text("التاريخ")),
-                        DataColumn(label: Text("التفاصيل")),
+                      columns: [
+                        DataColumn(label: Text("amount".tr())),
+                        DataColumn(label: Text("type".tr())),
+                        DataColumn(label: Text("cash_before".tr())),
+                        DataColumn(label: Text("cash_after".tr())),
+                        DataColumn(label: Text("date".tr())),
+                        DataColumn(label: Text("details".tr())),
                       ],
                       rows: transactions.map((tx) {
                         final isDeposit = (tx.amount ?? 0) > 0;
@@ -157,14 +163,19 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
 
                         return DataRow(
                           cells: [
-                            DataCell(Text("${tx.amount} جنيه",
+                            DataCell(Text(
+                                "${tx.amount} ${"currency".tr()}",
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, color: textColor))),
-                            DataCell(
-                                Text(tx.transactionType ?? "", style: TextStyle(color: textColor))),
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor))),
+                            DataCell(Text(tx.transactionType ?? "",
+                                style: TextStyle(color: textColor))),
                             DataCell(Text("${tx.cashBoxBefore ?? 0}")),
                             DataCell(Text("${tx.cashBoxAfter ?? 0}")),
-                            DataCell(Text( tx.transactionDate != null ? "${tx.transactionDate!.day}/${tx.transactionDate!.month}/${tx.transactionDate!.year}" : "", ),),                            DataCell(Text("${tx.transactionDetails ?? ""}")),
+                            DataCell(Text(tx.transactionDate != null
+                                ? formatDate(tx.transactionDate!)
+                                : "")),
+                            DataCell(Text("${tx.transactionDetails ?? ""}")),
                           ],
                         );
                       }).toList(),
@@ -174,7 +185,6 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
               },
             ),
           ),
-
         ],
       ),
     );

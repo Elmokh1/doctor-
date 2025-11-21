@@ -56,4 +56,14 @@ class PayVendorInvoiceCubit extends Cubit<PayVendorInvoiceState> {
       emit(PayVendorInvoiceError("حدث خطأ أثناء تحميل الفواتير"));
     }
   }
+  Future<void> fetchPaymentById(String vendorId,String id) async {
+    emit(PayVendorInvoiceLoading());
+    try {
+      final invoices = await MyDatabase.getVendorPaymentById(vendorId,id);
+      emit(PayVendorInvoiceLoaded(invoices));
+    } catch (e) {
+      emit(PayVendorInvoiceError("حدث خطأ أثناء جلب الفواتير: $e"));
+    }
+  }
+
 }

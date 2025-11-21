@@ -1,7 +1,10 @@
-import 'package:el_doctor/cubits/product_cubit/product_cubit.dart';
+import 'package:el_doctor/cubits/product_cubit/product__cubit.dart';
 import 'package:el_doctor/data/model/product_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
+
+import '../product_transaction_view.dart';
 
 class StoreTableWidget extends StatelessWidget {
   const StoreTableWidget({super.key});
@@ -28,13 +31,13 @@ class StoreTableWidget extends StatelessWidget {
 
           if (snapshot.hasError) {
             print("Error fetching product: ${snapshot.error}");
-            return const Center(child: Text("حدث خطأ أثناء جلب البيانات"));
+            return Center(child: Text("fetch_error".tr()));
           }
 
           final products = snapshot.data ?? [];
 
           if (products.isEmpty) {
-            return const Center(child: Text("لا توجد منتجات في المخزن"));
+            return Center(child: Text("no_products".tr()));
           }
 
           return SingleChildScrollView(
@@ -46,11 +49,11 @@ class StoreTableWidget extends StatelessWidget {
                 fontSize: 20,
               ),
               dataTextStyle: const TextStyle(fontSize: 18),
-              columns: const [
-                DataColumn(label: Text("اسم المنتج")),
-                DataColumn(label: Text("الكمية")),
-                DataColumn(label: Text("سعر البيع")),
-                DataColumn(label: Text("سعر الشراء")),
+              columns: [
+                DataColumn(label: Text("product_name".tr())),
+                DataColumn(label: Text("quantity".tr())),
+                DataColumn(label: Text("sale_price".tr())),
+                DataColumn(label: Text("buy_price".tr())),
               ],
               rows: products.map((product) {
                 return DataRow(
@@ -69,9 +72,29 @@ class StoreTableWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-                    DataCell(Text(product.qun?.toString() ?? "0")),
-                    DataCell(Text(product.salePrice?.toStringAsFixed(1) ?? "0.00")),
-                    DataCell(Text(product.buyPrice?.toStringAsFixed(2) ?? "0.00")),
+                    DataCell(
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProductTransactionsPage(
+                                productId: product.id ?? "",
+                                productName: product.productName ?? "",
+                                qun: product.qun?.toString() ?? "0",
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(product.qun?.toString() ?? "0"),
+                      ),
+                    ),
+                    DataCell(
+                      Text(product.salePrice?.toStringAsFixed(1) ?? "0.00"),
+                    ),
+                    DataCell(
+                      Text(product.buyPrice?.toStringAsFixed(2) ?? "0.00"),
+                    ),
                   ],
                 );
               }).toList(),
@@ -82,9 +105,11 @@ class StoreTableWidget extends StatelessWidget {
     );
   }
 
-
-
-  void _showEditDialog(BuildContext context, ProductModel product, ProductCubit cubit) {
+  void _showEditDialog(
+      BuildContext context,
+      ProductModel product,
+      ProductCubit cubit,
+      ) {
     final nameController = TextEditingController(text: product.productName ?? "");
     final buyController = TextEditingController(text: product.buyPrice?.toString() ?? "");
     final saleController = TextEditingController(text: product.salePrice?.toString() ?? "");
@@ -94,9 +119,9 @@ class StoreTableWidget extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          title: const Text(
-            "تعديل بيانات المنتج",
-            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+          title: Text(
+            "edit_product".tr(),
+            style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
             width: 350,
@@ -105,27 +130,27 @@ class StoreTableWidget extends StatelessWidget {
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: "اسم المنتج",
-                    prefixIcon: Icon(Icons.label_outline),
+                  decoration: InputDecoration(
+                    labelText: "product_name".tr(),
+                    prefixIcon: const Icon(Icons.label_outline),
                   ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: buyController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "سعر الشراء",
-                    prefixIcon: Icon(Icons.shopping_cart_outlined),
+                  decoration: InputDecoration(
+                    labelText: "buy_price".tr(),
+                    prefixIcon: const Icon(Icons.shopping_cart_outlined),
                   ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: saleController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "سعر البيع",
-                    prefixIcon: Icon(Icons.sell_outlined),
+                  decoration: InputDecoration(
+                    labelText: "sale_price".tr(),
+                    prefixIcon: const Icon(Icons.sell_outlined),
                   ),
                 ),
               ],
@@ -133,13 +158,13 @@ class StoreTableWidget extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              child: const Text("إلغاء", style: TextStyle(color: Colors.grey)),
+              child: Text("cancel".tr(), style: const TextStyle(color: Colors.grey)),
               onPressed: () => Navigator.pop(context),
             ),
             ElevatedButton.icon(
               icon: const Icon(Icons.save, size: 18),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-              label: const Text("حفظ"),
+              label: Text("save".tr()),
               onPressed: () async {
                 final newName = nameController.text.trim();
                 final newBuy = double.tryParse(buyController.text) ?? 0.0;
@@ -154,7 +179,7 @@ class StoreTableWidget extends StatelessWidget {
 
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✅ تم تحديث المنتج بنجاح")),
+                  SnackBar(content: Text("product_updated_success".tr())),
                 );
               },
             ),

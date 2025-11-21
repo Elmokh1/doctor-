@@ -13,6 +13,7 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
     required String customerId,
     required String customerName,
     required String invoiceType,
+    required String notes,
     required List<ProductModel> items,
     required double totalBeforeDiscount,
     required double totalAfterDiscount,
@@ -28,6 +29,7 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
         customerId: customerId,
         customerName: customerName,
         invoiceType: invoiceType,
+        notes: notes,
         items: items,
         totalBeforeDiscount: totalBeforeDiscount,
         totalAfterDiscount: totalAfterDiscount,
@@ -50,7 +52,7 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
   void getCustomerInvoices(String customerId) {
     emit(CustomerInvoiceLoading());
     MyDatabase.getCustomerInvoiceStream(customerId).listen(
-          (snapshot) {
+      (snapshot) {
         final invoices = snapshot.docs.map((e) => e.data()).toList();
         emit(CustomerInvoiceLoaded(invoices));
       },
@@ -58,5 +60,15 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
         emit(CustomerInvoiceError("حدث خطأ أثناء جلب البيانات"));
       },
     );
+  }
+
+  Future<void> fetchInvoicesById(String id) async {
+    emit(CustomerInvoiceLoading());
+    try {
+      final invoices = await MyDatabase.getCustomerInvoicesById(id);
+      emit(CustomerInvoiceLoaded(invoices));
+    } catch (e) {
+      emit(CustomerInvoiceError("حدث خطأ أثناء جلب الفواتير: $e"));
+    }
   }
 }

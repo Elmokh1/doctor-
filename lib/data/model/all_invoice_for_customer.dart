@@ -2,11 +2,11 @@ import 'package:el_doctor/data/model/product_model.dart';
 
 class CustomerInvoiceModel {
   static const String collectionName = 'InvoicesForCustomer';
-
   String? id;
   String? invoiceType; // بيع، مرتجع للمخزن
   String? customerId;
   String? customerName;
+  String? notes;
   List<ProductModel> items; // المنتجات في الفاتورة
   double? discount;
   double? totalBeforeDiscount;
@@ -19,6 +19,7 @@ class CustomerInvoiceModel {
     this.id,
     this.invoiceType,
     this.customerId,
+    this.notes,
     this.customerName,
     this.items = const [],
     this.discount,
@@ -34,6 +35,7 @@ class CustomerInvoiceModel {
       : this(
     id: data?['id'],
     invoiceType: data?['invoiceType'],
+    notes: data?['notes'],
     customerId: data?['customerId'],
     customerName: data?['customerName'],
     items: data?['items'] != null
@@ -56,6 +58,7 @@ class CustomerInvoiceModel {
     return {
       'id': id,
       'invoiceType': invoiceType,
+      'notes': notes,
       'customerId': customerId,
       'customerName': customerName,
       'items': items.map((e) => e.toFireStore()).toList(),

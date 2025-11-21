@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
+
 import '../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_cubit.dart';
 import '../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_state.dart';
-import '../../data/model/receive_payment.dart';
 
 class UniversalInvoiceListView<T> extends StatelessWidget {
   final T entity;
   final String Function(T) getName;
+  final double Function(dynamic invoice) invoiceAmount;
+  final DateTime? Function(dynamic invoice) invoiceDate;
+  final void Function(dynamic invoice)? onDetailsPressed;
 
   const UniversalInvoiceListView({
     super.key,
     required this.entity,
     required this.getName,
+    required this.invoiceAmount,
+    required this.invoiceDate,
+    this.onDetailsPressed,
   });
 
   @override
@@ -22,7 +29,7 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: Text("فواتير: ${getName(entity)}"),
+        title: Text(tr("invoices_for") + ": ${getName(entity)}"),
         centerTitle: true,
         backgroundColor: Colors.blueAccent,
       ),
@@ -40,34 +47,38 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
             final invoices = state.transactions;
 
             if (invoices.isEmpty) {
-              return const Center(
+              return Center(
                 child: Text(
-                  "لا توجد فواتير بعد",
-                  style: TextStyle(fontSize: 18),
+                  tr("no_invoices_yet"),
+                  style: const TextStyle(fontSize: 18),
                 ),
               );
             }
 
             return Center(
               child: Container(
-                width: 900,
+                width: MediaQuery.of(context).size.width * 0.95,
                 padding: const EdgeInsets.all(16),
                 child: ListView.separated(
                   itemCount: invoices.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final invoice = invoices[index];
+                    final amount = invoiceAmount(invoice).toStringAsFixed(2);
+                    final date = invoiceDate(invoice) != null
+                        ? dateFormat.format(invoiceDate(invoice)!)
+                        : '--';
 
                     return Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black12,
                             blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
@@ -81,7 +92,7 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              "فاتورة رقم: ${invoice.id}",
+                              "${tr("invoice_number")}: ${invoice.id}",
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -95,11 +106,11 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                "المبلغ: ${invoice.amount?.toStringAsFixed(2) ?? '0'} جنيه",
+                                "${tr("amount")}: $amount ${tr("egp")}",
                                 style: const TextStyle(fontSize: 16),
                               ),
                               Text(
-                                "التاريخ: ${invoice.dateTime != null ? dateFormat.format(invoice.dateTime!) : '--'}",
+                                "${tr("date")}: $date",
                                 style: const TextStyle(fontSize: 16),
                               ),
                             ],
@@ -109,12 +120,9 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
                             alignment: Alignment.centerRight,
                             child: ElevatedButton(
                               onPressed: () {
-                                // Navigator.push(
-                                //   context,
-                                //   MaterialPageRoute(
-                                //     builder: (_) => UniversalInvoiceDetailsCard(invoice: invoice),
-                                //   ),
-                                // );
+                                if (onDetailsPressed != null) {
+                                  onDetailsPressed!(invoice);
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blueAccent,
@@ -122,7 +130,7 @@ class UniversalInvoiceListView<T> extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text("عرض التفاصيل"),
+                              child: Text(tr("show_details")),
                             ),
                           ),
                         ],

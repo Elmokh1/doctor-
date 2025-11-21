@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AmountAndDetailsForm extends StatelessWidget {
   final TextEditingController amountController;
@@ -11,6 +12,7 @@ class AmountAndDetailsForm extends StatelessWidget {
     required this.detailsController,
     required this.selectedDate,
     required this.onDatePicked,
+    super.key,
   });
 
   @override
@@ -20,20 +22,26 @@ class AmountAndDetailsForm extends StatelessWidget {
         TextField(
           controller: amountController,
           keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: "المبلغ", border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: "amount".tr(),
+            border: const OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: detailsController,
-          decoration: const InputDecoration(labelText: "تفاصيل الحركة", border: OutlineInputBorder()),
+          decoration: InputDecoration(
+            labelText: "details".tr(),
+            border: const OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(selectedDate == null
-                ? "لم يتم اختيار تاريخ"
-                : "التاريخ: ${selectedDate!.toString().split(' ')[0]}"),
+                ? "no_date_selected".tr()
+                : "${"date".tr()}: ${selectedDate!.toString().split(' ')[0]}"),
             TextButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -44,7 +52,7 @@ class AmountAndDetailsForm extends StatelessWidget {
                 );
                 if (picked != null) onDatePicked(picked);
               },
-              child: const Text("اختيار تاريخ"),
+              child: Text("pick_date".tr()),
             ),
           ],
         ),

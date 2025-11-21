@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../cubits/section_cubit/section_cubit.dart';
 import '../../../cubits/section_cubit/section_state.dart';
@@ -21,29 +22,29 @@ class _AddSectionDialogState extends State<AddSectionDialog> {
     return BlocListener<SectionCubit, SectionState>(
       listener: (context, state) {
         if (state is SectionLoading) {
-          print("جاري الحفظ...");
+          print("loading".tr());
         } else if (state is SectionSuccess) {
           Navigator.pop(context);
-          showSuccessSnackBar(context, "تم إضافة البند بنجاح");
+          showSuccessSnackBar(context, "section_added_success".tr());
         } else if (state is SectionError) {
           showErrorSnackBar(context, state.message);
         }
       },
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("إضافة بند جديد"),
+        title: Text("add_new_section".tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<bool>(
               value: _isIncome,
-              decoration: const InputDecoration(
-                labelText: "نوع البند",
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: "section_type".tr(),
+                border: const OutlineInputBorder(),
               ),
-              items: const [
-                DropdownMenuItem(value: true, child: Text('دخل')),
-                DropdownMenuItem(value: false, child: Text('مصروف')),
+              items: [
+                DropdownMenuItem(value: true, child: Text('income'.tr())),
+                DropdownMenuItem(value: false, child: Text('expenses'.tr())),
               ],
               onChanged: (value) {
                 if (value != null) setState(() => _isIncome = value);
@@ -52,9 +53,9 @@ class _AddSectionDialogState extends State<AddSectionDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: _controller,
-              decoration: const InputDecoration(
-                hintText: "اكتب اسم البند",
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: "enter_section_name".tr(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ],
@@ -62,12 +63,12 @@ class _AddSectionDialogState extends State<AddSectionDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("إلغاء"),
+            child: Text("cancel".tr()),
           ),
           ElevatedButton(
             onPressed: () {
               if (_controller.text.trim().isEmpty) {
-                showErrorSnackBar(context, "اكتب اسم البند أولاً");
+                showErrorSnackBar(context, "enter_section_name_first".tr());
                 return;
               }
               context.read<SectionCubit>().addSection(
@@ -75,7 +76,7 @@ class _AddSectionDialogState extends State<AddSectionDialog> {
                 _isIncome,
               );
             },
-            child: const Text("حفظ"),
+            child: Text("save".tr()),
           ),
         ],
       ),

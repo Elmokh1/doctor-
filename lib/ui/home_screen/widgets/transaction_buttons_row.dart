@@ -1,5 +1,6 @@
 import 'package:el_doctor/ui/home_screen/add_product/add_product.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../add_transaction/add_transaction_widget.dart';
 import '../add_section/add_section_widget.dart';
@@ -19,7 +20,7 @@ class TransactionButtonsRow extends StatelessWidget {
           onPressed: () => _showAddTransactionDialog(context, true),
           icon: Icon(Icons.add, size: w * 0.015, color: Colors.white),
           label: Text(
-            "إضافة دخل جديد",
+            "add_income".tr(),
             style: TextStyle(color: Colors.white, fontSize: w * 0.013),
           ),
           style: ElevatedButton.styleFrom(
@@ -33,7 +34,7 @@ class TransactionButtonsRow extends StatelessWidget {
           onPressed: () => _showAddSectionDialog(context),
           icon: Icon(Icons.add, size: w * 0.015, color: Colors.white),
           label: Text(
-            "إضافة بند جديد",
+            "add_section".tr(),
             style: TextStyle(color: Colors.white, fontSize: w * 0.013),
           ),
           style: ElevatedButton.styleFrom(
@@ -47,7 +48,7 @@ class TransactionButtonsRow extends StatelessWidget {
           onPressed: () => _showAddTransactionDialog(context, false),
           icon: Icon(Icons.remove, size: w * 0.015, color: Colors.white),
           label: Text(
-            "تحويل نقديه",
+            "cash_transfer".tr(),
             style: TextStyle(color: Colors.white, fontSize: w * 0.013),
           ),
           style: ElevatedButton.styleFrom(

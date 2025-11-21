@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
 
 class SlideBarItem extends StatelessWidget {
-
   final IconData icon;
   final String title;
 
-  SlideBarItem(this.icon, this.title);
+  const SlideBarItem(this.icon, this.title, {super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 22),
-          const SizedBox(width: 10),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 20)),
+          Icon(
+            icon,
+            size: 26,
+            color: Colors.white.withOpacity(0.9),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ],
       ),
     );

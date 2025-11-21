@@ -1,12 +1,13 @@
 import 'package:el_doctor/ui/vendors/vendors_details/vendor_payment_Invoice_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
+
+import '../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_cubit.dart';
 import '../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_state.dart';
 import '../../cubits/vendors_cubit/vendor_cubit.dart';
 import '../../cubits/vendors_cubit/vendor_state.dart';
-import '../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_cubit.dart';
 import '../../data/model/vendor_model.dart';
-import '../../utils/customer_vendor_screen.dart';
 import '../../utils/universal_list_screen.dart';
 
 class VendorsScreen extends StatelessWidget {
@@ -26,25 +27,29 @@ class VendorsScreen extends StatelessWidget {
         }
 
         if (state is VendorError) {
-          return Scaffold(body: Center(child: Text(state.message)));
+          return Scaffold(
+            body: Center(
+              child: Text(state.message),
+            ),
+          );
         }
 
         if (state is VendorLoaded) {
           final vendors = state.vendors;
 
           if (vendors.isEmpty) {
-            return const Scaffold(
+            return Scaffold(
               body: Center(
                 child: Text(
-                  "لا يوجد موردين بعد",
-                  style: TextStyle(fontSize: 18),
+                  "no_vendors".tr(),
+                  style: const TextStyle(fontSize: 18),
                 ),
               ),
             );
           }
 
           return UniversalListScreen<VendorModel>(
-            title: "قائمة الموردين",
+            title: "vendors_list".tr(),
             items: vendors,
             getName: (v) => v.name ?? "-",
             getBalance: (v) => v.openingBalance ?? 0.0,
@@ -52,11 +57,8 @@ class VendorsScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => BlocProvider(
-                    create: (_) =>
-                        PayVendorInvoiceCubit()..loadInvoices(vendor.id ?? ""),
-                    child: PayVendorInvoiceView(vendor: vendor),
-                  ),
+                  builder: (context) =>
+                      VendorTransactionSummaryView(vendor: vendor),
                 ),
               );
             },
@@ -64,8 +66,10 @@ class VendorsScreen extends StatelessWidget {
         }
 
         // Default fallback
-        return const Scaffold(
-          body: Center(child: Text("حدث خطأ أثناء تحميل البيانات")),
+        return Scaffold(
+          body: Center(
+            child: Text("load_error".tr()),
+          ),
         );
       },
     );

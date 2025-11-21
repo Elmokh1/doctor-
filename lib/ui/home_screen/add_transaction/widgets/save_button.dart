@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../../cubits/cash_box_cubit/cash_box_cubit.dart';
 import '../../../../cubits/money_transaction_cubit/money_transaction_cubit.dart';
@@ -18,6 +19,7 @@ class SaveButton extends StatelessWidget {
     required this.detailsController,
     required this.selectedSection,
     required this.selectedDate,
+    super.key,
   });
 
   @override
@@ -29,60 +31,60 @@ class SaveButton extends StatelessWidget {
           onPressed: isLoading
               ? null
               : () async {
-                  if (selectedSection == null ||
-                      amountController.text.trim().isEmpty ||
-                      detailsController.text.trim().isEmpty) {
-                    showErrorSnackBar(context, "جميع الحقول مطلوبة");
-                    return;
-                  }
+            if (selectedSection == null ||
+                amountController.text.trim().isEmpty ||
+                detailsController.text.trim().isEmpty) {
+              showErrorSnackBar(context, "all_fields_required".tr());
+              return;
+            }
 
-                  final cubit = context.read<MoneyTransactionCubit>();
-                  final cashCubit = context.read<CashBoxCubit>();
-                  final amount = double.tryParse(amountController.text.trim());
-                  if (amount == null) {
-                    showErrorSnackBar(context, "ادخل مبلغ صحيح");
-                    return;
-                  }
+            final cubit = context.read<MoneyTransactionCubit>();
+            final cashCubit = context.read<CashBoxCubit>();
+            final amount = double.tryParse(amountController.text.trim());
+            if (amount == null) {
+              showErrorSnackBar(context, "enter_valid_amount".tr());
+              return;
+            }
 
-                  double currentCash;
-                  try {
-                    currentCash = await cashCubit.getCash();
-                  } catch (_) {
-                    showErrorSnackBar(context, "فشل جلب رصيد الخزنة");
-                    return;
-                  }
+            double currentCash;
+            try {
+              currentCash = await cashCubit.getCash();
+            } catch (_) {
+              showErrorSnackBar(context, "failed_fetch_cash".tr());
+              return;
+            }
 
-                  // هنا حددنا default value لو isIncome null
-                  final isIncome = selectedSection!.isIncome ?? true;
-                  final newCash = isIncome
-                      ? currentCash + amount
-                      : currentCash - amount;
+            // هنا حددنا default value لو isIncome null
+            final isIncome = selectedSection!.isIncome ?? true;
+            final newCash = isIncome
+                ? currentCash + amount
+                : currentCash - amount;
 
-                  cubit.addMoneyTransaction(
-                    selectedSection!.name ?? "",
-                    selectedSection!,
-                    selectedSection?.isIncome ?? false,
-                    amount,
-                    currentCash,
-                    newCash,
-                    detailsController.text.trim(),
-                    selectedDate,
-                    onSuccess: () {
-                      cashCubit.updateCash(amount, isIncome: isIncome);
-                      showSuccessSnackBar(context, "تم تحديث الرصيد بنجاح");
-                    },
-                  );
-                },
+            cubit.addMoneyTransaction(
+              selectedSection!.name ?? "",
+              selectedSection!,
+              selectedSection?.isIncome ?? false,
+              amount,
+              currentCash,
+              newCash,
+              detailsController.text.trim(),
+              selectedDate,
+              onSuccess: () {
+                cashCubit.updateCash(amount, isIncome: isIncome);
+                showSuccessSnackBar(context, "cash_updated_success".tr());
+              },
+            );
+          },
           child: isLoading
               ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : const Text("حفظ"),
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2,
+            ),
+          )
+              : Text("save".tr()),
         );
       },
     );

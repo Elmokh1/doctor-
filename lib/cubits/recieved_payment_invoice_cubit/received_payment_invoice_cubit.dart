@@ -59,4 +59,14 @@ class ReceivedPaymentInvoiceCubit extends Cubit<ReceivedPaymentInvoiceState> {
       emit(ReceivedPaymentInvoiceError("حدث خطأ أثناء تحميل الفواتير"));
     }
   }
+  Future<void> fetchReceivedPaymentById(String customerId,String id) async {
+    emit(ReceivedPaymentInvoiceLoading());
+    try {
+      final invoices = await MyDatabase.getCustomerPaymentById(customerId,id);
+      emit(ReceivedPaymentInvoiceLoaded(invoices));
+    } catch (e) {
+      emit(ReceivedPaymentInvoiceError("حدث خطأ أثناء جلب الفواتير: $e"));
+    }
+  }
+
 }

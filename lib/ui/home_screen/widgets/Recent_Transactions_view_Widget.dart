@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../cubits/money_transaction_cubit/money_transaction_cubit.dart';
 import '../../../data/model/money_transaction_model.dart';
 
@@ -32,13 +33,13 @@ class RecentTransactionsWidget extends StatelessWidget {
 
             if (snapshot.hasError) {
               print("Error fetching transactions: ${snapshot.error}");
-              return Center(child: Text("حدث خطأ أثناء جلب البيانات"));
+              return Center(child: Text("error_fetching_data".tr()));
             }
 
             final transactions = snapshot.data ?? [];
 
             if (transactions.isEmpty) {
-              return const Center(child: Text("لا توجد معاملات حتى الآن"));
+              return Center(child: Text("no_transactions_yet".tr()));
             }
 
             return SingleChildScrollView(
@@ -50,42 +51,34 @@ class RecentTransactionsWidget extends StatelessWidget {
                   fontSize: w * 0.014,
                 ),
                 dataTextStyle: TextStyle(fontSize: w * 0.013),
-                columns: const [
-                  DataColumn(label: Text("رصيد الخزنة بعد")),
-                  DataColumn(label: Text("رصيد الخزنة قبل")),
-                  DataColumn(label: Text("النوع")),
-                  DataColumn(label: Text("المبلغ")),
-                  DataColumn(label: Text("الوصف")),
-                  DataColumn(label: Text("التاريخ")),
+                columns: [
+                  DataColumn(label: Text("cash_after".tr())),
+                  DataColumn(label: Text("cash_before".tr())),
+                  DataColumn(label: Text("transaction_type".tr())),
+                  DataColumn(label: Text("amount".tr())),
+                  DataColumn(label: Text("details".tr())),
+                  DataColumn(label: Text("date".tr())),
                 ],
                 rows: transactions.map((transaction) {
-                  // هنا تحتاج تحسب الرصيد قبل وبعد المعاملة
-                  final beforeCash =
-                      transaction.cashBoxBefore ??
-                      0.0; // استبدل بالرصيد الحقيقي قبل المعاملة
-                  final afterCash =
-                      transaction.cashBoxAfter ??
-                      0.0; // استبدل بالرصيد بعد المعاملة
+                  final beforeCash = transaction.cashBoxBefore ?? 0.0;
+                  final afterCash = transaction.cashBoxAfter ?? 0.0;
 
                   return DataRow(
                     cells: [
                       DataCell(
                         afterCash > beforeCash
                             ? Text(
-                                afterCash.toStringAsFixed(2),
-                                style: TextStyle(color: Colors.green),
-                              )
+                          afterCash.toStringAsFixed(2),
+                          style: TextStyle(color: Colors.green),
+                        )
                             : Text(
-                                afterCash.toStringAsFixed(2),
-                                style: TextStyle(color: Colors.red),
-                              ),
+                          afterCash.toStringAsFixed(2),
+                          style: TextStyle(color: Colors.red),
+                        ),
                       ),
                       DataCell(Text(beforeCash.toStringAsFixed(2))),
-
                       DataCell(Text(transaction.transactionType ?? "")),
-                      DataCell(
-                        Text(transaction.amount?.toStringAsFixed(2) ?? "0.00"),
-                      ),
+                      DataCell(Text(transaction.amount?.toStringAsFixed(2) ?? "0.00")),
                       DataCell(Text(transaction.transactionDetails ?? "")),
                       DataCell(
                         Text(

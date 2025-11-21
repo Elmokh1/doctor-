@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class SaveButton extends StatelessWidget {
   final bool isLoading;
@@ -16,7 +17,7 @@ class SaveButton extends StatelessWidget {
         ? const Center(child: CircularProgressIndicator())
         : ElevatedButton.icon(
       icon: const Icon(Icons.save),
-      label: const Text("حفظ الفاتورة"),
+      label: Text('save_invoice'.tr()),
       onPressed: onPressed,
     );
   }
