@@ -28,10 +28,10 @@ jobs:
         run: flutter build windows --release
 
       - name: List build output
-        run: dir build\windows\runner\Release
+        run: dir build\windows\x64\Release\runner
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/runner/Release/
+          path: build/windows/x64/Release/runner/
