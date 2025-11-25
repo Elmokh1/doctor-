@@ -1,7 +1,13 @@
+import 'dart:io';
+
+import 'package:excel/excel.dart' as excel_format; // 👈 إضافة
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:path_provider/path_provider.dart'; // 👈 إضافة
+import 'package:share_plus/share_plus.dart'; // 👈 إضافة
+
 
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_cubit.dart';
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_state.dart';
@@ -27,6 +33,139 @@ class PaymentToVendor extends StatelessWidget {
     return '${value.toStringAsFixed(2)} EGP';
   }
 
+  // **********************************************
+  //           دالة التصدير إلى Excel
+  // **********************************************
+  void _exportPaymentToExcel(BuildContext context, PayVendorModel payment) async {
+    var excel = excel_format.Excel.createExcel();
+    excel_format.Sheet sheetObject = excel[tr("vendor_payment_receipt")];
+    final int maxCols = 4;
+    int rowIndex = 0;
+
+    // **********************************
+    // 1. العنوان الرئيسي
+    // **********************************
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr('دفع'))
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        fontSize: 16,
+        horizontalAlign: excel_format.HorizontalAlign.Center,
+        backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
+      );
+    rowIndex++;
+    rowIndex++;
+
+    // **********************************
+    // 2. تفاصيل الإيصال الأساسية
+    // **********************************
+
+    void addDetailRow(String label, String value, {bool boldValue = false}) {
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = excel_format.TextCellValue(label)
+        ..cellStyle = excel_format.CellStyle(bold: true);
+
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+        ..value = excel_format.TextCellValue(value)
+        ..cellStyle = excel_format.CellStyle(bold: boldValue, horizontalAlign: excel_format.HorizontalAlign.Right);
+      rowIndex++;
+    }
+
+    addDetailRow(tr('receipt_id'), payment.id ?? '-');
+    addDetailRow(tr('vendor_name'), payment.customerName ?? '-');
+    addDetailRow(tr('date'), _formatDate(payment.dateTime));
+
+    rowIndex++;
+
+    // **********************************
+    // 3. الملخص المالي
+    // **********************************
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr("payment_details"))
+      ..cellStyle = excel_format.CellStyle(bold: true, backgroundColorHex: excel_format.ExcelColor.fromHexString("FFE0E0E0"));
+    rowIndex++;
+
+    addDetailRow(tr('balance_before'), _formatCurrency(payment.oldBalance));
+    addDetailRow(tr('received_amount'), _formatCurrency(payment.amount), boldValue: true);
+
+    // تنسيق الرصيد بعد الدفع
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr('balance_after'))
+      ..cellStyle = excel_format.CellStyle(bold: true, backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"));
+
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(_formatCurrency(payment.newBalance))
+      ..cellStyle = excel_format.CellStyle(bold: true, horizontalAlign: excel_format.HorizontalAlign.Right, backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"));
+    rowIndex++;
+    rowIndex++;
+
+    // **********************************
+    // 4. الملاحظات
+    // **********************************
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr("transaction_notes"))
+      ..cellStyle = excel_format.CellStyle(bold: true, backgroundColorHex: excel_format.ExcelColor.fromHexString("FFE0E0E0"));
+    rowIndex++;
+
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(
+          payment.transactionDetails?.isNotEmpty == true ? payment.transactionDetails! : tr('no_notes_available'))
+      ..cellStyle = excel_format.CellStyle(horizontalAlign: excel_format.HorizontalAlign.Right);
+    rowIndex++;
+
+    sheetObject.setColumnWidth(0, 18.0);
+    sheetObject.setColumnWidth(2, 25.0);
+
+
+    // **********************************
+    // 5. الحفظ والمشاركة
+    // **********************************
+    try {
+      final directory = await getTemporaryDirectory();
+      final fileName = 'VendorPayment_${payment.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+      final path = '${directory.path}/$fileName';
+
+      var fileBytes = excel.save();
+
+      if (fileBytes != null) {
+        final file = File(path);
+        await file.writeAsBytes(fileBytes);
+
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: tr("share_vendor_payment_message", args: [payment.id ?? '-']),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("share_started")),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        throw Exception("Failed to generate Excel file bytes.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr("export_failed", args: [e.toString()])),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+      print("Export Error: $e");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     context.read<PayVendorInvoiceCubit>().fetchPaymentById(
@@ -39,6 +178,9 @@ class PaymentToVendor extends StatelessWidget {
         title: Text('payment_receipt_details'.tr()),
         centerTitle: true,
         backgroundColor: Colors.teal,
+        actions: [
+          _buildExportButton(context), // 👈 زر التصدير
+        ],
       ),
       body: BlocBuilder<PayVendorInvoiceCubit, PayVendorInvoiceState>(
         builder: (context, state) {
@@ -123,6 +265,29 @@ class PaymentToVendor extends StatelessWidget {
           return const SizedBox();
         },
       ),
+    );
+  }
+
+  // **********************************
+  //    دالة الزرار الخاص بالتصدير
+  // **********************************
+  Widget _buildExportButton(BuildContext context) {
+    return BlocSelector<PayVendorInvoiceCubit, PayVendorInvoiceState, bool>(
+      selector: (state) => state is PayVendorInvoiceLoaded && state.transactions.isNotEmpty,
+      builder: (context, canExport) {
+        return IconButton(
+          icon: const Icon(Icons.file_download, color: Colors.white),
+          tooltip: tr("export_to_excel"),
+          onPressed: canExport
+              ? () {
+            final state = context.read<PayVendorInvoiceCubit>().state;
+            if (state is PayVendorInvoiceLoaded) {
+              _exportPaymentToExcel(context, state.transactions.first);
+            }
+          }
+              : null,
+        );
+      },
     );
   }
 

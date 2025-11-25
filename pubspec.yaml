@@ -44,6 +44,10 @@ dependencies:
   pdf:
   printing:
   easy_localization:
+  excel:
+  path_provider:
+  share_plus:
+
 
 dev_dependencies:
   flutter_test:
@@ -70,8 +74,11 @@ flutter:
   generate: true
 
   # To add assets to your application, add an assets section, like this:
+  # ... (under flutter:)
   assets:
-     - assets/translations/
+    - assets/translations/
+
+
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

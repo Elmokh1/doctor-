@@ -1,14 +1,19 @@
+import 'dart:io';
+
+import 'package:excel/excel.dart' as excel_format; // 👈 إضافة
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
+// تم إزالة: import 'package:printing/printing.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:path_provider/path_provider.dart'; // 👈 إضافة
+import 'package:share_plus/share_plus.dart'; // 👈 إضافة
 
 import '../../../cubits/vendor_bills_cubit/vendor_bills_cubit.dart';
 import '../../../cubits/vendor_bills_cubit/vendor_bills_state.dart';
 import '../../../data/model/all_invoice_for_customer.dart';
 import '../../../data/model/product_model.dart';
-import '../../customer/customer_details/print.dart';
+// تم إزالة: import '../../customer/customer_details/print.dart';
 
 class VendorBillByIdScreen extends StatelessWidget {
   final String billId;
@@ -28,6 +33,168 @@ class VendorBillByIdScreen extends StatelessWidget {
     return dateValue.toString();
   }
 
+  // **********************************************
+  //           دالة التصدير إلى Excel
+  // **********************************************
+  void _exportBillToExcel(BuildContext context, CustomerInvoiceModel bill) async {
+    var excel = excel_format.Excel.createExcel();
+    excel_format.Sheet sheetObject = excel[tr("vendor_bill")];
+    final int maxCols = 6;
+    int rowIndex = 0;
+
+    // **********************************
+    // 1. العنوان الرئيسي
+    // **********************************
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr('${bill.invoiceType}'))
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        fontSize: 16,
+        horizontalAlign: excel_format.HorizontalAlign.Center,
+      );
+    rowIndex++;
+    rowIndex++;
+
+    // **********************************
+    // 2. تفاصيل الفاتورة
+    // **********************************
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = excel_format.TextCellValue("${tr('vendor_name')}: ${bill.customerName ?? tr('unknown')}");
+
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = excel_format.TextCellValue("${tr('date')}: ${_formatDate(bill.dateTime)}");
+
+    rowIndex++;
+    rowIndex++; // فراغ قبل الجدول
+
+    // **********************************
+    // 3. جدول المنتجات
+    // **********************************
+
+    excel_format.CellStyle headerStyle = excel_format.CellStyle(
+      bold: true,
+      backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
+      horizontalAlign: excel_format.HorizontalAlign.Center,
+      topBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      bottomBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      leftBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      rightBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+    );
+
+    List<String> productHeaders = [
+      tr('product'), tr('qty'), tr('price'), tr('total'),
+    ];
+    sheetObject.appendRow(productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
+
+    for (int col = 0; col < productHeaders.length; col++) {
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex)).cellStyle = headerStyle;
+    }
+
+    rowIndex++;
+
+    excel_format.CellStyle dataStyle = excel_format.CellStyle(
+      horizontalAlign: excel_format.HorizontalAlign.Right,
+      numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
+      topBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      bottomBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      leftBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      rightBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+    );
+
+    for (var p in bill.items) {
+      double total = (p.qun ?? 0) * (p.salePrice ?? 0.0);
+
+      List<excel_format.CellValue> rowData = [
+        excel_format.TextCellValue(p.productName ?? tr('n_a')),
+        excel_format.TextCellValue((p.qun ?? 0).toString()),
+        excel_format.TextCellValue((p.salePrice ?? 0.00).toStringAsFixed(2)),
+        excel_format.TextCellValue(total.toStringAsFixed(2)),
+      ];
+
+      sheetObject.appendRow(rowData);
+
+      for (int col = 0; col < rowData.length; col++) {
+        sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex)).cellStyle = dataStyle;
+        sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
+      }
+      rowIndex++;
+    }
+    rowIndex++;
+
+    // **********************************
+    // 4. الملخص المالي
+    // **********************************
+    excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(bold: true);
+    excel_format.CellStyle summaryValueStyle = excel_format.CellStyle(
+      bold: true,
+      numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
+      backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"),
+    );
+
+    void addSummaryRow(String label, double? value, {bool isTotal = false}) {
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = excel_format.TextCellValue(label)
+        ..cellStyle = summaryLabelStyle;
+
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+        ..value = excel_format.TextCellValue("${value?.toStringAsFixed(2) ?? 0.00} EGP")
+        ..cellStyle = (isTotal ? summaryValueStyle : excel_format.CellStyle(bold: true, horizontalAlign: excel_format.HorizontalAlign.Right));
+
+      rowIndex++;
+    }
+
+    addSummaryRow(tr('total_before_discount'), bill.totalBeforeDiscount);
+    addSummaryRow(tr('discount'), bill.discount);
+    addSummaryRow(tr('total_payable'), bill.totalAfterDiscount, isTotal: true);
+    rowIndex++;
+    addSummaryRow(tr('previous_debt'), bill.debtBefore);
+    addSummaryRow(tr('current_debt'), bill.debtAfter);
+
+
+    // **********************************
+    // 5. الحفظ والمشاركة
+    // **********************************
+    try {
+      final directory = await getTemporaryDirectory();
+      final fileName = 'VendorBill_${bill.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+      final path = '${directory.path}/$fileName';
+
+      var fileBytes = excel.save();
+
+      if (fileBytes != null) {
+        final file = File(path);
+        await file.writeAsBytes(fileBytes);
+
+        await Share.shareXFiles(
+          [XFile(path)],
+          text: tr("share_vendor_bill_message", args: [bill.id ?? '-']),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("share_started")),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        throw Exception("Failed to generate Excel file bytes.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr("export_failed", args: [e.toString()])),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+      print("Export Error: $e");
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     context.read<VendorBillCubit>().fetchBillsById(billId);
@@ -39,18 +206,7 @@ class VendorBillByIdScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: () async {
-              final state = context.read<VendorBillCubit>().state;
-              if (state is VendorBillLoaded && state.bills.isNotEmpty) {
-                final bill = state.bills.first;
-                await Printing.layoutPdf(
-                  onLayout: (format) => CustomerInvoicePDF.generateA4Invoice(bill),
-                );
-              }
-            },
-          ),
+          _buildExportButton(context), // 👈 زر التصدير
         ],
       ),
       body: BlocBuilder<VendorBillCubit, VendorBillState>(
@@ -98,6 +254,29 @@ class VendorBillByIdScreen extends StatelessWidget {
           return const SizedBox();
         },
       ),
+    );
+  }
+
+  // **********************************
+  //    دالة الزرار الخاص بالتصدير
+  // **********************************
+  Widget _buildExportButton(BuildContext context) {
+    return BlocSelector<VendorBillCubit, VendorBillState, bool>(
+      selector: (state) => state is VendorBillLoaded && state.bills.isNotEmpty,
+      builder: (context, canExport) {
+        return IconButton(
+          icon: const Icon(Icons.file_download, color: Colors.white),
+          tooltip: tr("export_to_excel"),
+          onPressed: canExport
+              ? () {
+            final state = context.read<VendorBillCubit>().state;
+            if (state is VendorBillLoaded) {
+              _exportBillToExcel(context, state.bills.first);
+            }
+          }
+              : null, // تعطيل الزر إذا لم تتوفر بيانات
+        );
+      },
     );
   }
 

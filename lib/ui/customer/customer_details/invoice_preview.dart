@@ -1,9 +1,13 @@
-import 'package:el_doctor/ui/customer/customer_details/print.dart';
+import 'dart:io';
+
+import 'package:excel/excel.dart'
+    as excel_format; // 👈 تم إضافة الاسم المستعار هنا
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../../cubits/customer_invoice_cubit/customer_invoice_cubit.dart';
 import '../../../../../cubits/customer_invoice_cubit/customer_invoice_state.dart';
@@ -11,13 +15,368 @@ import '../../../../../data/model/all_invoice_for_customer.dart';
 import '../../../../../data/model/product_model.dart';
 
 class CustomerInvoiceByIdScreen extends StatelessWidget {
+  // افترضنا أن الخاصية الصحيحة هي 'id' بدلاً من 'invoiceId'
   final String invoiceId;
 
   const CustomerInvoiceByIdScreen({super.key, required this.invoiceId});
 
+  // **********************************************
+  //           دالة التصدير إلى Excel
+  // **********************************************
+  void _exportInvoiceToExcel(
+    BuildContext context,
+    CustomerInvoiceModel invoice,
+  ) async {
+    var excel = excel_format.Excel.createExcel();
+    excel_format.Sheet sheetObject = excel[tr("invoice")];
+
+    final int maxCols = 6;
+    int rowIndex = 0;
+
+    // **********************************
+    // 1. العنوان الرئيسي
+    // **********************************
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
+      // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
+      ..value = excel_format.TextCellValue(
+        tr("${invoice.invoiceType}"),
+      )
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        fontSize: 16,
+        horizontalAlign: excel_format.HorizontalAlign.Center,
+      );
+    rowIndex++;
+    rowIndex++;
+
+    // **********************************
+    // 2. تفاصيل الفاتورة
+    // **********************************
+    // الصف الأول: اسم العميل والتاريخ
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
+        .value = excel_format.TextCellValue(
+      "${tr('customer_name')}: ${invoice.customerName ?? tr('unknown')}",
+    );
+
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 3,
+            rowIndex: rowIndex,
+          ),
+        )
+        .value = excel_format.TextCellValue(
+      "${tr('date')}: ${_formatDate(invoice.dateTime)}",
+    );
+
+    rowIndex++;
+
+    // الصف الثاني: النوع والملاحظات
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
+        .value = excel_format.TextCellValue(
+      "${tr('invoice_type')}: ${invoice.invoiceType ?? tr('undefined')}",
+    );
+
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 3,
+            rowIndex: rowIndex,
+          ),
+        )
+        .value = excel_format.TextCellValue(
+      "${tr('notes')}: ${invoice.notes ?? tr('no_notes')}",
+    );
+
+    rowIndex++;
+    rowIndex++; // فراغ قبل الجدول
+
+    // **********************************
+    // 3. جدول المنتجات
+    // **********************************
+
+    // تنسيق العنوان
+    excel_format.CellStyle headerStyle = excel_format.CellStyle(
+      bold: true,
+      backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
+      horizontalAlign: excel_format.HorizontalAlign.Center,
+      // 👈 تم استخدام excel_format.Border و excel_format.BorderStyle
+      topBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      bottomBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      leftBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      rightBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+    );
+
+    // عناوين الجدول
+    List<String> productHeaders = [
+      tr('product'),
+      tr('qty'),
+      tr('price'),
+      tr('total'),
+    ];
+    sheetObject.appendRow(
+      productHeaders.map((h) => excel_format.TextCellValue(h)).toList(),
+    );
+
+    for (int col = 0; col < productHeaders.length; col++) {
+      sheetObject
+              .cell(
+                excel_format.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+              )
+              .cellStyle =
+          headerStyle;
+    }
+
+    rowIndex++;
+
+    // تنسيق الأرقام والحدود لصفوف البيانات
+    excel_format.CellStyle dataStyle = excel_format.CellStyle(
+      horizontalAlign: excel_format.HorizontalAlign.Right,
+      // 👈 تم تصحيح NumFormat إلى custom('#,##0.00')
+      numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
+      topBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      bottomBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      leftBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+      rightBorder: excel_format.Border(
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
+    );
+
+    for (var p in invoice.items) {
+      double total = (p.qun ?? 0) * (p.salePrice ?? 0.0);
+
+      List<excel_format.CellValue> rowData = [
+        excel_format.TextCellValue(p.productName ?? tr('n_a')),
+        excel_format.TextCellValue((p.qun ?? 0).toString()),
+        excel_format.TextCellValue((p.salePrice ?? 0.00).toStringAsFixed(2)),
+        excel_format.TextCellValue(total.toStringAsFixed(2)),
+      ];
+
+      sheetObject.appendRow(rowData);
+
+      for (int col = 0; col < rowData.length; col++) {
+        sheetObject
+                .cell(
+                  excel_format.CellIndex.indexByColumnRow(
+                    columnIndex: col,
+                    rowIndex: rowIndex,
+                  ),
+                )
+                .cellStyle =
+            dataStyle;
+        sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
+      }
+      rowIndex++;
+    }
+    rowIndex++;
+
+    // **********************************
+    // 4. الملخص المالي
+    // **********************************
+    excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(
+      bold: true,
+    );
+    excel_format.CellStyle summaryValueStyle = excel_format.CellStyle(
+      bold: true,
+      // 👈 تم تصحيح NumFormat إلى custom('#,##0.00')
+      numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
+      backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"),
+    );
+
+    void addSummaryRow(String label, double? value, {bool isTotal = false}) {
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 3,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
+        ..value = excel_format.TextCellValue(label)
+        ..cellStyle = summaryLabelStyle;
+
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 4,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: maxCols - 1,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 4,
+            rowIndex: rowIndex,
+          ),
+        )
+        ..value = excel_format.TextCellValue(
+          "${value?.toStringAsFixed(2) ?? 0.00} EGP",
+        )
+        ..cellStyle = (isTotal
+            ? summaryValueStyle
+            : excel_format.CellStyle(
+                bold: true,
+                horizontalAlign: excel_format.HorizontalAlign.Right,
+              ));
+
+      rowIndex++;
+    }
+
+    addSummaryRow(tr('total_before_discount'), invoice.totalBeforeDiscount);
+    addSummaryRow(tr('discount'), invoice.discount);
+    addSummaryRow(
+      tr('total_payable'),
+      invoice.totalAfterDiscount,
+      isTotal: true,
+    );
+    rowIndex++;
+    addSummaryRow(tr('previous_debt'), invoice.debtBefore);
+    addSummaryRow(tr('current_debt'), invoice.debtAfter);
+
+    // **********************************
+    // 5. الحفظ والمشاركة
+    // **********************************
+    try {
+      final directory = await getTemporaryDirectory();
+      // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
+      final fileName =
+          'Invoice_${invoice.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+      final path = '${directory.path}/$fileName';
+
+      var fileBytes = excel.save();
+
+      if (fileBytes != null) {
+        final file = File(path);
+        await file.writeAsBytes(fileBytes);
+
+        await Share.shareXFiles(
+          [XFile(path)],
+          // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
+          text: tr("share_invoice_message", args: [invoice.id ?? '-']),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr("share_started")),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        throw Exception("Failed to generate Excel file bytes.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(tr("export_failed", args: [e.toString()])),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+      print("Export Error: $e");
+    }
+  }
+
+  // **********************************************
+  // ... (باقي كلاس StatelessWidget بدون تغيير)
+  // **********************************************
   String _formatDate(dynamic dateValue) {
     if (dateValue == null) return tr('n_a');
-    if (dateValue is DateTime) return DateFormat('yyyy-MM-dd').format(dateValue);
+    if (dateValue is DateTime)
+      return DateFormat('yyyy-MM-dd').format(dateValue);
     if (dateValue is String) {
       try {
         return dateValue.split(" ")[0];
@@ -30,44 +389,44 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    context.read<CustomerInvoicesCubit>().fetchInvoicesById(invoiceId);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CustomerInvoicesCubit>().fetchInvoicesById(invoiceId);
+    });
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(tr('invoice_details'), style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          tr('invoice_details'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.teal,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: () async {
-              final state = context.read<CustomerInvoicesCubit>().state;
-              if (state is CustomerInvoiceLoaded && state.invoices.isNotEmpty) {
-                final invoice = state.invoices.first;
-                await Printing.layoutPdf(
-                  onLayout: (format) => CustomerInvoicePDF.generateA4Invoice(invoice),
-                );
-              }
-            },
-          ),
-        ],
+        actions: [_buildExportButton(context)],
       ),
       body: BlocBuilder<CustomerInvoicesCubit, CustomerInvoiceState>(
         builder: (context, state) {
           if (state is CustomerInvoiceLoading) {
-            return const Center(child: CircularProgressIndicator(color: Colors.teal));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.teal),
+            );
           }
 
           if (state is CustomerInvoiceError) {
             return Center(
-              child: Text(state.message, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
+              ),
             );
           }
 
           if (state is CustomerInvoiceLoaded) {
             if (state.invoices.isEmpty) {
               return Center(
-                child: Text(tr('no_data_for_invoice'), style: const TextStyle(fontSize: 18)),
+                child: Text(
+                  tr('no_data_for_invoice'),
+                  style: const TextStyle(fontSize: 18),
+                ),
               );
             }
 
@@ -89,11 +448,16 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
                   _buildSectionTitle(tr('notes')),
                   Card(
                     elevation: 3,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     color: Colors.grey.shade100,
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
-                      child: Text(invoice.notes ?? tr('no_notes'), style: const TextStyle(fontSize: 16)),
+                      child: Text(
+                        invoice.notes ?? tr('no_notes'),
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -111,10 +475,38 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildExportButton(BuildContext context) {
+    return BlocSelector<CustomerInvoicesCubit, CustomerInvoiceState, bool>(
+      selector: (state) =>
+          state is CustomerInvoiceLoaded && state.invoices.isNotEmpty,
+      builder: (context, canExport) {
+        return IconButton(
+          icon: const Icon(Icons.file_download, color: Colors.white),
+          tooltip: tr("export_to_excel"),
+          onPressed: canExport
+              ? () {
+                  final state = context.read<CustomerInvoicesCubit>().state;
+                  if (state is CustomerInvoiceLoaded) {
+                    _exportInvoiceToExcel(context, state.invoices.first);
+                  }
+                }
+              : null,
+        );
+      },
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(title, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.teal.shade800)),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.teal.shade800,
+        ),
+      ),
     );
   }
 
@@ -127,11 +519,23 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRowWithIcon(Icons.receipt_long, tr('invoice_type'), invoice.invoiceType ?? tr('undefined')),
+            _buildInfoRowWithIcon(
+              Icons.receipt_long,
+              tr('invoice_type'),
+              invoice.invoiceType ?? tr('undefined'),
+            ),
             const Divider(),
-            _buildInfoRowWithIcon(Icons.person, tr('customer_name'), invoice.customerName ?? tr('unknown')),
+            _buildInfoRowWithIcon(
+              Icons.person,
+              tr('customer_name'),
+              invoice.customerName ?? tr('unknown'),
+            ),
             const Divider(),
-            _buildInfoRowWithIcon(Icons.calendar_today, tr('date'), _formatDate(invoice.dateTime)),
+            _buildInfoRowWithIcon(
+              Icons.calendar_today,
+              tr('date'),
+              _formatDate(invoice.dateTime),
+            ),
           ],
         ),
       ),
@@ -142,22 +546,55 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.all(8),
         child: DataTable(
           columnSpacing: 16,
-          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.teal.shade50),
+          headingRowColor: MaterialStateColor.resolveWith(
+            (states) => Colors.teal.shade50,
+          ),
           columns: [
-            DataColumn(label: Text(tr('product'), style: const TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text(tr('qty'), style: const TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text(tr('price'), style: const TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(
+              label: Text(
+                tr('product'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                tr('qty'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                tr('price'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
           rows: products.map((product) {
-            return DataRow(cells: [
-              DataCell(Text(product.productName ?? tr('n_a'), style: const TextStyle(fontWeight: FontWeight.w500))),
-              DataCell(Center(child: Text("${product.qun ?? 0}"))),
-              DataCell(Text("${product.salePrice?.toStringAsFixed(2) ?? 0.00} EGP")),
-            ]);
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text(
+                    product.productName ?? tr('n_a'),
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                DataCell(
+                  Container(
+                    alignment: Alignment.center,
+                    child: Text("${product.qun ?? 0}"),
+                  ),
+                ),
+                DataCell(
+                  Text("${product.salePrice?.toStringAsFixed(2) ?? 0.00} EGP"),
+                ),
+              ],
+            );
           }).toList(),
         ),
       ),
@@ -172,41 +609,94 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildInfoRow(tr('total_before_discount'), invoice.totalBeforeDiscount, Colors.black87),
+            _buildInfoRow(
+              tr('total_before_discount'),
+              invoice.totalBeforeDiscount,
+              Colors.black87,
+            ),
             _buildInfoRow(tr('discount'), invoice.discount, Colors.red),
             const Divider(height: 15),
-            _buildInfoRow(tr('total_payable'), invoice.totalAfterDiscount, Colors.teal.shade700, isTotal: true),
+            _buildInfoRow(
+              tr('total_payable'),
+              invoice.totalAfterDiscount,
+              Colors.teal.shade700,
+              isTotal: true,
+            ),
             const Divider(height: 20, thickness: 1.5),
-            _buildInfoRow(tr('previous_debt'), invoice.debtBefore, Colors.black54),
-            _buildInfoRow(tr('current_debt'), invoice.debtAfter, Colors.blue.shade700),
+            _buildInfoRow(
+              tr('previous_debt'),
+              invoice.debtBefore,
+              Colors.black54,
+            ),
+            _buildInfoRow(
+              tr('current_debt'),
+              invoice.debtAfter,
+              Colors.blue.shade700,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRowWithIcon(IconData icon, String label, String value, {Color color = Colors.black87}) {
+  Widget _buildInfoRowWithIcon(
+    IconData icon,
+    String label,
+    String value, {
+    Color color = Colors.black87,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Icon(icon, color: Colors.teal, size: 20),
           const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-          Expanded(child: Text(value, textAlign: TextAlign.end, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color))),
+          Text(
+            "$label: ",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, double? value, Color valueColor, {bool isTotal = false}) {
+  Widget _buildInfoRow(
+    String label,
+    double? value,
+    Color valueColor, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: isTotal ? 18 : 16, fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-          Text("${value?.toStringAsFixed(2) ?? 0.00} EGP", style: TextStyle(fontSize: isTotal ? 18 : 16, fontWeight: FontWeight.bold, color: valueColor)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "${value?.toStringAsFixed(2) ?? 0.00} EGP",
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+          ),
         ],
       ),
     );
