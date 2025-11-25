@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-
+import 'package:file_selector/file_selector.dart';
 import '../../../../../cubits/customer_invoice_cubit/customer_invoice_cubit.dart';
 import '../../../../../cubits/customer_invoice_cubit/customer_invoice_state.dart';
 import '../../../../../data/model/all_invoice_for_customer.dart';
@@ -24,9 +24,9 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
   //           دالة التصدير إلى Excel
   // **********************************************
   void _exportInvoiceToExcel(
-    BuildContext context,
-    CustomerInvoiceModel invoice,
-  ) async {
+      BuildContext context,
+      CustomerInvoiceModel invoice,
+      ) async {
     var excel = excel_format.Excel.createExcel();
     excel_format.Sheet sheetObject = excel[tr("invoice")];
 
@@ -37,193 +37,96 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     // 1. العنوان الرئيسي
     // **********************************
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0,
-        rowIndex: rowIndex,
-      ),
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: maxCols - 1,
-        rowIndex: rowIndex,
-      ),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
     );
-    sheetObject.cell(
-        excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0,
-          rowIndex: rowIndex,
-        ),
-      )
-      // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
-      ..value = excel_format.TextCellValue(
-        tr("${invoice.invoiceType}"),
-      )
+    sheetObject
+        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = excel_format.TextCellValue(tr("${invoice.invoiceType}"))
       ..cellStyle = excel_format.CellStyle(
         bold: true,
         fontSize: 16,
         horizontalAlign: excel_format.HorizontalAlign.Center,
       );
-    rowIndex++;
-    rowIndex++;
+    rowIndex += 2;
 
     // **********************************
     // 2. تفاصيل الفاتورة
     // **********************************
-    // الصف الأول: اسم العميل والتاريخ
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0,
-        rowIndex: rowIndex,
-      ),
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 2,
-        rowIndex: rowIndex,
-      ),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
     );
     sheetObject
-        .cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 0,
-            rowIndex: rowIndex,
-          ),
-        )
+        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
         .value = excel_format.TextCellValue(
       "${tr('customer_name')}: ${invoice.customerName ?? tr('unknown')}",
     );
 
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 3,
-        rowIndex: rowIndex,
-      ),
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: maxCols - 1,
-        rowIndex: rowIndex,
-      ),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
     );
     sheetObject
-        .cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 3,
-            rowIndex: rowIndex,
-          ),
-        )
+        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
         .value = excel_format.TextCellValue(
       "${tr('date')}: ${_formatDate(invoice.dateTime)}",
     );
 
     rowIndex++;
 
-    // الصف الثاني: النوع والملاحظات
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0,
-        rowIndex: rowIndex,
-      ),
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 2,
-        rowIndex: rowIndex,
-      ),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
     );
     sheetObject
-        .cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 0,
-            rowIndex: rowIndex,
-          ),
-        )
+        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
         .value = excel_format.TextCellValue(
       "${tr('invoice_type')}: ${invoice.invoiceType ?? tr('undefined')}",
     );
 
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 3,
-        rowIndex: rowIndex,
-      ),
-      excel_format.CellIndex.indexByColumnRow(
-        columnIndex: maxCols - 1,
-        rowIndex: rowIndex,
-      ),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
     );
     sheetObject
-        .cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 3,
-            rowIndex: rowIndex,
-          ),
-        )
+        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
         .value = excel_format.TextCellValue(
       "${tr('notes')}: ${invoice.notes ?? tr('no_notes')}",
     );
 
-    rowIndex++;
-    rowIndex++; // فراغ قبل الجدول
+    rowIndex += 2;
 
     // **********************************
     // 3. جدول المنتجات
     // **********************************
 
-    // تنسيق العنوان
     excel_format.CellStyle headerStyle = excel_format.CellStyle(
       bold: true,
       backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
       horizontalAlign: excel_format.HorizontalAlign.Center,
-      // 👈 تم استخدام excel_format.Border و excel_format.BorderStyle
-      topBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      bottomBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      leftBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      rightBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
     );
 
-    // عناوين الجدول
     List<String> productHeaders = [
       tr('product'),
       tr('qty'),
       tr('price'),
       tr('total'),
     ];
-    sheetObject.appendRow(
-      productHeaders.map((h) => excel_format.TextCellValue(h)).toList(),
-    );
+
+    sheetObject.appendRow(productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
 
     for (int col = 0; col < productHeaders.length; col++) {
       sheetObject
-              .cell(
-                excel_format.CellIndex.indexByColumnRow(
-                  columnIndex: col,
-                  rowIndex: rowIndex,
-                ),
-              )
-              .cellStyle =
-          headerStyle;
+          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
+          .cellStyle = headerStyle;
     }
 
     rowIndex++;
 
-    // تنسيق الأرقام والحدود لصفوف البيانات
     excel_format.CellStyle dataStyle = excel_format.CellStyle(
       horizontalAlign: excel_format.HorizontalAlign.Right,
-      // 👈 تم تصحيح NumFormat إلى custom('#,##0.00')
       numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
-      topBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      bottomBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      leftBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
-      rightBorder: excel_format.Border(
-        borderStyle: excel_format.BorderStyle.Thin,
-      ),
     );
 
     for (var p in invoice.items) {
@@ -240,143 +143,90 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
 
       for (int col = 0; col < rowData.length; col++) {
         sheetObject
-                .cell(
-                  excel_format.CellIndex.indexByColumnRow(
-                    columnIndex: col,
-                    rowIndex: rowIndex,
-                  ),
-                )
-                .cellStyle =
-            dataStyle;
+            .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
+            .cellStyle = dataStyle;
         sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
       }
       rowIndex++;
     }
+
     rowIndex++;
 
     // **********************************
     // 4. الملخص المالي
     // **********************************
-    excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(
-      bold: true,
-    );
-    excel_format.CellStyle summaryValueStyle = excel_format.CellStyle(
-      bold: true,
-      // 👈 تم تصحيح NumFormat إلى custom('#,##0.00')
-      numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
-      backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"),
-    );
 
-    void addSummaryRow(String label, double? value, {bool isTotal = false}) {
+    void addSummaryRow(String label, double? value) {
       sheetObject.merge(
-        excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0,
-          rowIndex: rowIndex,
-        ),
-        excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 3,
-          rowIndex: rowIndex,
-        ),
+        excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
       );
-      sheetObject.cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 0,
-            rowIndex: rowIndex,
-          ),
-        )
-        ..value = excel_format.TextCellValue(label)
-        ..cellStyle = summaryLabelStyle;
+      sheetObject
+          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+          .value = excel_format.TextCellValue(label);
 
       sheetObject.merge(
-        excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 4,
-          rowIndex: rowIndex,
-        ),
-        excel_format.CellIndex.indexByColumnRow(
-          columnIndex: maxCols - 1,
-          rowIndex: rowIndex,
-        ),
+        excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
       );
-      sheetObject.cell(
-          excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 4,
-            rowIndex: rowIndex,
-          ),
-        )
-        ..value = excel_format.TextCellValue(
-          "${value?.toStringAsFixed(2) ?? 0.00} EGP",
-        )
-        ..cellStyle = (isTotal
-            ? summaryValueStyle
-            : excel_format.CellStyle(
-                bold: true,
-                horizontalAlign: excel_format.HorizontalAlign.Right,
-              ));
+      sheetObject
+          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .value = excel_format.TextCellValue(
+        "${value?.toStringAsFixed(2) ?? "0.00"} EGP",
+      );
 
       rowIndex++;
     }
 
     addSummaryRow(tr('total_before_discount'), invoice.totalBeforeDiscount);
     addSummaryRow(tr('discount'), invoice.discount);
-    addSummaryRow(
-      tr('total_payable'),
-      invoice.totalAfterDiscount,
-      isTotal: true,
-    );
-    rowIndex++;
+    addSummaryRow(tr('total_payable'), invoice.totalAfterDiscount);
     addSummaryRow(tr('previous_debt'), invoice.debtBefore);
     addSummaryRow(tr('current_debt'), invoice.debtAfter);
 
     // **********************************
-    // 5. الحفظ والمشاركة
+    // 5. الحفظ — النسخة الحقيقية (بعد كتابة البيانات)
     // **********************************
+
     try {
-      final directory = await getTemporaryDirectory();
-      // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
       final fileName =
-          'Invoice_${invoice.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final path = '${directory.path}/$fileName';
+          'Invoice_${invoice.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+        ],
+      );
+
+      if (location == null) return;
 
       var fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
-
-        await Share.shareXFiles(
-          [XFile(path)],
-          // 👈 تم تصحيح invoice.invoiceId إلى invoice.id
-          text: tr("share_invoice_message", args: [invoice.id ?? '-']),
-        );
+        final savedFile = File(location.path);
+        await savedFile.writeAsBytes(fileBytes);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("share_started")),
-            duration: const Duration(seconds: 4),
+            content: Text('تم حفظ الملف في: ${savedFile.path}'),
+            duration: Duration(seconds: 4),
           ),
         );
-      } else {
-        throw Exception("Failed to generate Excel file bytes.");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(tr("export_failed", args: [e.toString()])),
+          content: Text('فشل التصدير: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 10),
         ),
       );
-      print("Export Error: $e");
     }
   }
 
-  // **********************************************
-  // ... (باقي كلاس StatelessWidget بدون تغيير)
-  // **********************************************
   String _formatDate(dynamic dateValue) {
     if (dateValue == null) return tr('n_a');
-    if (dateValue is DateTime)
-      return DateFormat('yyyy-MM-dd').format(dateValue);
+    if (dateValue is DateTime) return DateFormat('yyyy-MM-dd').format(dateValue);
     if (dateValue is String) {
       try {
         return dateValue.split(" ")[0];

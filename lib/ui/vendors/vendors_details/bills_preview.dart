@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:excel/excel.dart' as excel_format; // 👈 إضافة
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -45,8 +46,12 @@ class VendorBillByIdScreen extends StatelessWidget {
     // **********************************
     // 1. العنوان الرئيسي
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(
+            columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0, rowIndex: rowIndex))
       ..value = excel_format.TextCellValue(tr('${bill.invoiceType}'))
       ..cellStyle = excel_format.CellStyle(
         bold: true,
@@ -59,11 +64,25 @@ class VendorBillByIdScreen extends StatelessWidget {
     // **********************************
     // 2. تفاصيل الفاتورة
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = excel_format.TextCellValue("${tr('vendor_name')}: ${bill.customerName ?? tr('unknown')}");
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 2, rowIndex: rowIndex));
+    sheetObject
+        .cell(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0, rowIndex: rowIndex))
+        .value = excel_format.TextCellValue(
+        "${tr('vendor_name')}: ${bill.customerName ?? tr('unknown')}");
 
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = excel_format.TextCellValue("${tr('date')}: ${_formatDate(bill.dateTime)}");
+    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(
+            columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject
+        .cell(excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3, rowIndex: rowIndex))
+        .value = excel_format.TextCellValue(
+        "${tr('date')}: ${_formatDate(bill.dateTime)}");
 
     rowIndex++;
     rowIndex++; // فراغ قبل الجدول
@@ -76,19 +95,27 @@ class VendorBillByIdScreen extends StatelessWidget {
       bold: true,
       backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
       horizontalAlign: excel_format.HorizontalAlign.Center,
-      topBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      bottomBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      leftBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      rightBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      topBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      bottomBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      leftBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      rightBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
     );
 
     List<String> productHeaders = [
       tr('product'), tr('qty'), tr('price'), tr('total'),
     ];
-    sheetObject.appendRow(productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
+    sheetObject.appendRow(
+        productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
 
     for (int col = 0; col < productHeaders.length; col++) {
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex)).cellStyle = headerStyle;
+      sheetObject
+          .cell(excel_format.CellIndex.indexByColumnRow(
+          columnIndex: col, rowIndex: rowIndex))
+          .cellStyle = headerStyle;
     }
 
     rowIndex++;
@@ -96,10 +123,14 @@ class VendorBillByIdScreen extends StatelessWidget {
     excel_format.CellStyle dataStyle = excel_format.CellStyle(
       horizontalAlign: excel_format.HorizontalAlign.Right,
       numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
-      topBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      bottomBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      leftBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
-      rightBorder: excel_format.Border(borderStyle: excel_format.BorderStyle.Thin),
+      topBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      bottomBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      leftBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
+      rightBorder: excel_format.Border(
+          borderStyle: excel_format.BorderStyle.Thin),
     );
 
     for (var p in bill.items) {
@@ -115,7 +146,10 @@ class VendorBillByIdScreen extends StatelessWidget {
       sheetObject.appendRow(rowData);
 
       for (int col = 0; col < rowData.length; col++) {
-        sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex)).cellStyle = dataStyle;
+        sheetObject
+            .cell(excel_format.CellIndex.indexByColumnRow(
+            columnIndex: col, rowIndex: rowIndex))
+            .cellStyle = dataStyle;
         sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
       }
       rowIndex++;
@@ -125,7 +159,8 @@ class VendorBillByIdScreen extends StatelessWidget {
     // **********************************
     // 4. الملخص المالي
     // **********************************
-    excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(bold: true);
+    excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(
+        bold: true);
     excel_format.CellStyle summaryValueStyle = excel_format.CellStyle(
       bold: true,
       numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
@@ -133,15 +168,25 @@ class VendorBillByIdScreen extends StatelessWidget {
     );
 
     void addSummaryRow(String label, double? value, {bool isTotal = false}) {
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0, rowIndex: rowIndex),
+          excel_format.CellIndex.indexByColumnRow(
+              columnIndex: 3, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0, rowIndex: rowIndex))
         ..value = excel_format.TextCellValue(label)
         ..cellStyle = summaryLabelStyle;
 
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex), excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-        ..value = excel_format.TextCellValue("${value?.toStringAsFixed(2) ?? 0.00} EGP")
-        ..cellStyle = (isTotal ? summaryValueStyle : excel_format.CellStyle(bold: true, horizontalAlign: excel_format.HorizontalAlign.Right));
+      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 4, rowIndex: rowIndex),
+          excel_format.CellIndex.indexByColumnRow(
+              columnIndex: maxCols - 1, rowIndex: rowIndex));
+      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 4, rowIndex: rowIndex))
+        ..value = excel_format.TextCellValue(
+            "${value?.toStringAsFixed(2) ?? 0.00} EGP")
+        ..cellStyle = (isTotal ? summaryValueStyle : excel_format.CellStyle(
+            bold: true, horizontalAlign: excel_format.HorizontalAlign.Right));
 
       rowIndex++;
     }
@@ -158,26 +203,39 @@ class VendorBillByIdScreen extends StatelessWidget {
     // 5. الحفظ والمشاركة
     // **********************************
     try {
-      final directory = await getTemporaryDirectory();
-      final fileName = 'VendorBill_${bill.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final path = '${directory.path}/$fileName';
+      final fileName =
+          'VendorBill_${bill.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(
+          DateTime.now())}.xlsx';
 
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+        ],
+      );
+
+      // لو المستخدم قفل نافذة اختيار المكان
+      if (location == null) return;
+
+      // حفظ البايتات
       var fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
+        final savedFile = File(location.path);
+        await savedFile.writeAsBytes(fileBytes);
 
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: tr("share_vendor_bill_message", args: [bill.id ?? '-']),
-        );
-
+        // رسالة تأكيد
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("share_started")),
+            content: Text('تم حفظ الملف في: ${savedFile.path}'),
             duration: const Duration(seconds: 4),
           ),
+        );
+
+        // مشاركة الملف بعد الحفظ
+        await Share.shareXFiles(
+          [XFile(savedFile.path)],
+          text: tr("share_vendor_bill_message", args: [bill.id ?? '-']),
         );
       } else {
         throw Exception("Failed to generate Excel file bytes.");
@@ -195,7 +253,7 @@ class VendorBillByIdScreen extends StatelessWidget {
   }
 
 
-  @override
+    @override
   Widget build(BuildContext context) {
     context.read<VendorBillCubit>().fetchBillsById(billId);
 

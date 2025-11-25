@@ -1,5 +1,6 @@
 import 'package:el_doctor/ui/vendors/vendors_details/bills_preview.dart';
 import 'package:el_doctor/ui/vendors/vendors_details/payment_to_vendor_preview.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -38,7 +39,7 @@ class VendorTransactionSummaryView extends StatelessWidget {
         excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
         excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex));
     sheetObject.cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-      ..value = excel_format.TextCellValue(tr("vendor_summary_title", args: [vendorName]))
+      ..value = excel_format.TextCellValue("${vendorName}")
       ..cellStyle = excel_format.CellStyle(
         bold: true,
         fontSize: 16,
@@ -127,24 +128,30 @@ class VendorTransactionSummaryView extends StatelessWidget {
 
     // 4. الحفظ والمشاركة
     try {
-      final directory = await getTemporaryDirectory();
-      final fileName = 'VendorSummary_${vendor.name ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final path = '${directory.path}/$fileName';
+      final fileName =
+          'VendorSummary_${vendor.name ?? "Unknown"}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
 
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+        ],
+      );
+
+      // لو المستخدم قفل نافذة اختيار المكان
+      if (location == null) return;
+
+      // حفظ البايتات
       var fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
+        final savedFile = File(location.path);
+        await savedFile.writeAsBytes(fileBytes);
 
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: tr("share_summary_message", args: [vendorName]),
-        );
-
+        // رسالة تأكيد
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("share_started")),
+            content: Text('تم حفظ الملف في: ${savedFile.path}'),
             duration: const Duration(seconds: 4),
           ),
         );
@@ -161,6 +168,7 @@ class VendorTransactionSummaryView extends StatelessWidget {
       );
       print("Export Error: $e");
     }
+
   }
 
   // **********************************

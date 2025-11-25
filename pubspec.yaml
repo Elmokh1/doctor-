@@ -47,6 +47,7 @@ dependencies:
   excel:
   path_provider:
   share_plus:
+  file_selector:
 
 
 dev_dependencies:

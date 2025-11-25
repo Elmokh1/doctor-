@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:excel/excel.dart' as excel_format; // 👈 إضافة الاسم المستعار
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -128,41 +129,41 @@ class ReceivePaymentByIdScreen extends StatelessWidget {
     // 5. الحفظ والمشاركة
     // **********************************
     try {
-      final directory = await getTemporaryDirectory();
-      final fileName = 'Receipt_${payment.id ?? 'Unknown'}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final path = '${directory.path}/$fileName';
+      final fileName =
+          'Invoice_${payment.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
+
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+        ],
+      );
+
+      if (location == null) return;
 
       var fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
-
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: tr("share_receipt_message", args: [payment.id ?? '-']),
-        );
+        final savedFile = File(location.path);
+        await savedFile.writeAsBytes(fileBytes);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("share_started")),
-            duration: const Duration(seconds: 4),
+            content: Text('تم حفظ الملف في: ${savedFile.path}'),
+            duration: Duration(seconds: 4),
           ),
         );
-      } else {
-        throw Exception("Failed to generate Excel file bytes.");
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(tr("export_failed", args: [e.toString()])),
+          content: Text('فشل التصدير: $e'),
           backgroundColor: Colors.red,
-          duration: const Duration(seconds: 10),
         ),
       );
-      print("Export Error: $e");
     }
   }
+
 
   // **********************************************
 

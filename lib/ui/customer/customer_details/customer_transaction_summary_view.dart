@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:el_doctor/ui/customer/customer_details/payment_preview.dart';
 import 'package:excel/excel.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -44,7 +45,7 @@ class CustomerTransactionSummaryView extends StatelessWidget {
 
     // 1. إنشاء ملف Excel جديد
     var excel = Excel.createExcel();
-    Sheet sheetObject = excel[customer.name??""]; // اسم الشيت
+    Sheet sheetObject = excel[customer.name ?? ""]; // اسم الشيت
 
     // 2. إعداد العناوين (Headers)
     List<String> headers = [
@@ -86,44 +87,47 @@ class CustomerTransactionSummaryView extends StatelessWidget {
       ];
 
       // التحويل إلى TextCellValue وإضافة الصف
-      sheetObject.appendRow(rowData.map((data) => TextCellValue(data)).toList());
+      sheetObject.appendRow(
+          rowData.map((data) => TextCellValue(data)).toList());
     }
 
     try {
-      // 4. استخدام getTemporaryDirectory لحفظ الملف مؤقتاً للمشاركة
-      final directory = await getTemporaryDirectory();
-      final fileName = '${customer.name}_Transactions_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-      final path = '${directory.path}/$fileName';
+      // اسم الملف
+      final fileName =
+          '${customer.name}_Transactions_${DateFormat('yyyyMMdd').format(
+          DateTime.now())}.xlsx';
+
+      // فتح نافذة اختيار مكان الحفظ
+      final FileSaveLocation? location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: [
+          XTypeGroup(label: 'Excel', extensions: ['xlsx']),
+        ],
+      );
+
+      // لو اليوزر قفل الـ dialog
+      if (location == null) return;
 
       // حفظ البايتات
       var fileBytes = excel.save();
 
       if (fileBytes != null) {
-        final file = File(path);
-        await file.writeAsBytes(fileBytes);
+        final savedFile = File(location.path);
+        await savedFile.writeAsBytes(fileBytes);
 
-        // 5. فتح واجهة المشاركة (Share Sheet) مباشرة
-        await Share.shareXFiles(
-          [XFile(path)],
-          text: tr("share_excel_message"),
-        );
-
-        // رسالة بسيطة للتأكيد
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(tr("share_started")), // قم بإنشاء مفتاح الترجمة هذا
-            duration: const Duration(seconds: 4),
+            content: Text('تم حفظ الملف في: ${savedFile.path}'),
+            duration: Duration(),
           ),
         );
-
       } else {
         throw Exception("Failed to generate Excel file bytes.");
       }
     } catch (e) {
-      // 6. رسالة الخطأ
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(tr("export_failed", args: [e.toString()])),
+          content: Text('فشل التصدير: $e'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 10),
         ),

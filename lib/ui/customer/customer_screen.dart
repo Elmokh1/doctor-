@@ -6,7 +6,7 @@ import '../../../cubits/customer_cubit/customer_cubit.dart';
 import '../../../cubits/customer_cubit/customer_state.dart';
 import '../../../data/model/customer_model.dart';
 import '../../../utils/universal_list_screen.dart';
-import 'customer_details/receive_payment_Invoice_view.dart'; // المفروض عندك الملف ده جاهز
+import 'customer_details/customer_transaction_summary_view.dart'; // المفروض عندك الملف ده جاهز
 
 class CustomerScreen extends StatelessWidget {
   const CustomerScreen({super.key});
