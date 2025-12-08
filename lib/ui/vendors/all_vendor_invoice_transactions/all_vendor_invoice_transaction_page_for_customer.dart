@@ -62,9 +62,13 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
   }
 
   void _openAddProductDialog() {
-    showAddProductDialog(context, (item) {
-      setState(() => _invoiceItems.add(item));
-    });
+    showAddProductDialog(
+      context,
+          (item) {
+        setState(() => _invoiceItems.add(item));
+      },
+      isSale: false,  // ← هنا التعديل
+    );
   }
 
   Future<void> _saveInvoice() async {

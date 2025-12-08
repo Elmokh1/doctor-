@@ -16,12 +16,11 @@ class StorePage extends StatelessWidget {
         centerTitle: true,
         elevation: 3,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        child: Center(
           child: Column(
             children: [
-              Expanded(child: StoreTableWidget()),
+              StoreTableWidget(),
             ],
           ),
         ),

@@ -9,10 +9,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_selector/file_selector.dart';
-import '../../../../../cubits/customer_invoice_cubit/customer_invoice_cubit.dart';
-import '../../../../../cubits/customer_invoice_cubit/customer_invoice_state.dart';
-import '../../../../../data/model/all_invoice_for_customer.dart';
-import '../../../../../data/model/product_model.dart';
+import '../../../../../../cubits/customer_invoice_cubit/customer_invoice_cubit.dart';
+import '../../../../../../cubits/customer_invoice_cubit/customer_invoice_state.dart';
+import '../../../../../../data/model/all_invoice_for_customer.dart';
+import '../../../../../../data/model/product_model.dart';
+import 'edit_invoice.dart';
 
 class CustomerInvoiceByIdScreen extends StatelessWidget {
   // افترضنا أن الخاصية الصحيحة هي 'id' بدلاً من 'invoiceId'
@@ -24,9 +25,9 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
   //           دالة التصدير إلى Excel
   // **********************************************
   void _exportInvoiceToExcel(
-      BuildContext context,
-      CustomerInvoiceModel invoice,
-      ) async {
+    BuildContext context,
+    CustomerInvoiceModel invoice,
+  ) async {
     var excel = excel_format.Excel.createExcel();
     excel_format.Sheet sheetObject = excel[tr("invoice")];
 
@@ -37,11 +38,21 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     // 1. العنوان الرئيسي
     // **********************************
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
-      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
     );
-    sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+    sheetObject.cell(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr("${invoice.invoiceType}"))
       ..cellStyle = excel_format.CellStyle(
         bold: true,
@@ -54,21 +65,43 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     // 2. تفاصيل الفاتورة
     // **********************************
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
     );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
       "${tr('customer_name')}: ${invoice.customerName ?? tr('unknown')}",
     );
 
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
-      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
     );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 3,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
       "${tr('date')}: ${_formatDate(invoice.dateTime)}",
     );
@@ -76,21 +109,43 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
     rowIndex++;
 
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
     );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
       "${tr('invoice_type')}: ${invoice.invoiceType ?? tr('undefined')}",
     );
 
     sheetObject.merge(
-      excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
-      excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
     );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 3,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
       "${tr('notes')}: ${invoice.notes ?? tr('no_notes')}",
     );
@@ -114,12 +169,20 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
       tr('total'),
     ];
 
-    sheetObject.appendRow(productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
+    sheetObject.appendRow(
+      productHeaders.map((h) => excel_format.TextCellValue(h)).toList(),
+    );
 
     for (int col = 0; col < productHeaders.length; col++) {
       sheetObject
-          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
-          .cellStyle = headerStyle;
+              .cell(
+                excel_format.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+              )
+              .cellStyle =
+          headerStyle;
     }
 
     rowIndex++;
@@ -143,8 +206,14 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
 
       for (int col = 0; col < rowData.length; col++) {
         sheetObject
-            .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: rowIndex))
-            .cellStyle = dataStyle;
+                .cell(
+                  excel_format.CellIndex.indexByColumnRow(
+                    columnIndex: col,
+                    rowIndex: rowIndex,
+                  ),
+                )
+                .cellStyle =
+            dataStyle;
         sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
       }
       rowIndex++;
@@ -158,19 +227,43 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
 
     void addSummaryRow(String label, double? value) {
       sheetObject.merge(
-        excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
-        excel_format.CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 3,
+          rowIndex: rowIndex,
+        ),
       );
       sheetObject
-          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = excel_format.TextCellValue(label);
+          .cell(
+            excel_format.CellIndex.indexByColumnRow(
+              columnIndex: 0,
+              rowIndex: rowIndex,
+            ),
+          )
+          .value = excel_format.TextCellValue(
+        label,
+      );
 
       sheetObject.merge(
-        excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
-        excel_format.CellIndex.indexByColumnRow(columnIndex: maxCols - 1, rowIndex: rowIndex),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 4,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: maxCols - 1,
+          rowIndex: rowIndex,
+        ),
       );
       sheetObject
-          .cell(excel_format.CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+          .cell(
+            excel_format.CellIndex.indexByColumnRow(
+              columnIndex: 4,
+              rowIndex: rowIndex,
+            ),
+          )
           .value = excel_format.TextCellValue(
         "${value?.toStringAsFixed(2) ?? "0.00"} EGP",
       );
@@ -216,17 +309,15 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('فشل التصدير: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('فشل التصدير: $e'), backgroundColor: Colors.red),
       );
     }
   }
 
   String _formatDate(dynamic dateValue) {
     if (dateValue == null) return tr('n_a');
-    if (dateValue is DateTime) return DateFormat('yyyy-MM-dd').format(dateValue);
+    if (dateValue is DateTime)
+      return DateFormat('yyyy-MM-dd').format(dateValue);
     if (dateValue is String) {
       try {
         return dateValue.split(" ")[0];
@@ -251,7 +342,7 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
         ),
         centerTitle: true,
         backgroundColor: Colors.teal,
-        actions: [_buildExportButton(context)],
+        actions: [_buildExportButton(context), _buildEditButton(context)],
       ),
       body: BlocBuilder<CustomerInvoicesCubit, CustomerInvoiceState>(
         builder: (context, state) {
@@ -343,6 +434,18 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
               : null,
         );
       },
+    );
+  }
+
+  Widget _buildEditButton(BuildContext context) {
+    return IconButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => EditCustomerInvoice(invoiceId: invoiceId,)),
+        );
+      },
+      icon: Icon(Icons.edit, color: Colors.black),
     );
   }
 

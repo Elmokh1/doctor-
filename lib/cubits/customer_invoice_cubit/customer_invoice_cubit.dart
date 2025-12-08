@@ -71,4 +71,5 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
       emit(CustomerInvoiceError("حدث خطأ أثناء جلب الفواتير: $e"));
     }
   }
+
 }

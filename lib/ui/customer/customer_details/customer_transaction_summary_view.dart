@@ -20,7 +20,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_cubit.dart';
 import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_state.dart';
 import '../../../data/model/customer_model.dart';
-import 'invoice_preview.dart';
+import 'invoice_preview/invoice_preview.dart';
 
 class CustomerTransactionSummaryView extends StatelessWidget {
   final CustomerModel customer;

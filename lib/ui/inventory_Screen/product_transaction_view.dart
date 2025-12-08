@@ -5,7 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../cubits/product_tranaction_cubit/product_transaction_cubit.dart';
 import '../../cubits/product_tranaction_cubit/product_transaction_state.dart';
 import '../../data/model/proudct_transaction_model.dart';
-import '../customer/customer_details/invoice_preview.dart';
+import '../customer/customer_details/invoice_preview/invoice_preview.dart';
 import '../vendors/vendors_details/bills_preview.dart';
 
 class ProductTransactionsPage extends StatefulWidget {
