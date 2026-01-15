@@ -325,6 +325,41 @@ class MyDatabase {
   }
 
   // --------------------------------------
+  // Update Product Transaction by InvoiceId
+  // --------------------------------------
+  static Future<void> updateProductTransactionByInvoiceId({
+    required String productId,
+    required String oldInvoiceId, // رقم الفاتورة القديمة
+    required int newQuantity,
+    required DateTime newDate,
+    required String newInvoiceId, // رقم الفاتورة الجديدة
+  }) async {
+    final collection = productTransactionCollection(productId);
+
+    // الحصول على كل الحركات المرتبطة بالـ invoiceId القديم
+    final querySnapshot = await collection
+        .where('invoiceId', isEqualTo: oldInvoiceId)
+        .get();
+
+    if (querySnapshot.docs.isEmpty) {
+      print("❌ لم يتم العثور على حركات مرتبطة بهذه الفاتورة: $oldInvoiceId");
+      return;
+    }
+
+    for (var doc in querySnapshot.docs) {
+      await collection.doc(doc.id).update({
+        'qun': newQuantity,
+        'transactionDate': newDate.millisecondsSinceEpoch,
+        'invoiceId': newInvoiceId,
+      });
+
+      print(
+        "🔥 تم تحديث حركة المنتج وربطها بالـ Invoice جديد $newInvoiceId بدلاً من $oldInvoiceId",
+      );
+    }
+  }
+
+  // --------------------------------------
   //  Delete Transaction
   // --------------------------------------
   static Future<void> deleteProductTransaction(
@@ -483,6 +518,22 @@ class MyDatabase {
 
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
+  static Future<void> updateVendorInvoice({
+    required String vendorId,
+    required PayVendorModel updatedPayment,
+  }) async {
+    if (updatedPayment.id == null) {
+      throw Exception("Invoice ID is null, cannot update document");
+    }
+
+    // تعديل الفاتورة بدون مسح الحقول الأخرى
+    await vendorInvoiceCollection(vendorId)
+        .doc(updatedPayment.id)
+        .set(
+      updatedPayment, // ← Map<String, dynamic> صح
+      SetOptions(merge: true),
+    );
+  }
 
   //
   //Customer
@@ -620,16 +671,17 @@ class MyDatabase {
         );
   }
 
-  static Future<void> addInvoice(
+  static Future<String> addInvoice(
     ReceivePaymentModel receivePayment,
-    String customerId, // ← الفيندور زي ما هو
-    String invoiceId, // ← الكاونتر الجديد Manual ID
+    String customerId,
   ) async {
-    final docRef = customerInvoiceCollection(customerId).doc(invoiceId);
+    final docRef = customerInvoiceCollection(customerId).doc();
 
-    receivePayment.id = invoiceId; // نخزن ID الفاتورة نفسه
+    receivePayment.id = docRef.id;
 
-    return await docRef.set(receivePayment);
+    await docRef.set(receivePayment);
+
+    return docRef.id;
   }
 
   static Future<ReceivePaymentModel?> readReceivedPayment(
@@ -683,16 +735,32 @@ class MyDatabase {
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
 
-  static Future<List<ReceivePaymentModel>> getCustomerPaymentById(
+  static Future<List<ReceivePaymentModel>> getCustomerPaymentByInvoiceNum(
     String customerId,
     String id,
   ) async {
     final snap = await customerInvoiceCollection(
       customerId,
-    ).where('id', isEqualTo: id).get();
+    ).where('invoiceNum', isEqualTo: id).get();
 
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
+  static Future<void> updateReceivedPayment({
+    required String customerId,
+    required ReceivePaymentModel payment,
+  }) async {
+    if (payment.id == null) {
+      throw Exception("Payment ID is null, cannot update document");
+    }
+
+    await customerInvoiceCollection(customerId)
+        .doc(payment.id)
+        .set(
+      payment,
+      SetOptions(merge: true), // عشان يعدل الموجود بس وميمسحش باقي الحقول
+    );
+  }
+
 
   // Counters
   static CollectionReference<InvoiceCounterModel>
@@ -938,15 +1006,18 @@ class MyDatabase {
         );
   }
 
-  // إضافة فاتورة جديدة
-  static Future<void> addCustomerInvoice(
-    CustomerInvoiceModel invoice,
-    String invoiceId,
-  ) async {
-    final docRef = getCustomerInvoiceCollection().doc(invoiceId);
-    invoice.id = invoiceId;
+  // إضافة فاتورة جديدة - Auto ID + إرجاع الـ ID
+  static Future<String> addCustomerInvoice(CustomerInvoiceModel invoice) async {
+    final docRef = getCustomerInvoiceCollection().doc(); // ← Auto ID من فايربيز
+
+    invoice.id = docRef.id; // ← نخزن الـ ID داخل الموديل
+
     await docRef.set(invoice);
-    print("✅ تم حفظ الفاتورة بنجاح بالـ ID: $invoiceId");
+
+    print("✅ تم حفظ الفاتورة بنجاح بالـ ID: ${docRef.id}");
+
+    return docRef
+        .id; // ← مهم جداً — نرجّعه لاستخدامه في CustomerTransactionSummary
   }
 
   // قراءة فاتورة معينة
@@ -969,7 +1040,7 @@ class MyDatabase {
     String id,
   ) async {
     final snap = await getCustomerInvoiceCollection()
-        .where('id', isEqualTo: id)
+        .where('invoiceNum', isEqualTo: id)
         .get();
 
     return snap.docs.map((e) => e.data()..id = e.id).toList();
@@ -999,9 +1070,13 @@ class MyDatabase {
     print("✅ تم تحديث الفاتورة بنجاح بالـ ID: ${invoice.id}");
   }
 
+  // =======================
+  // Vendor Bills Section
+  // =======================
+
   static CollectionReference<CustomerInvoiceModel> getVendorBillCollection() {
     return FirebaseFirestore.instance
-        .collection('VendorBill') // اسم الكوليكشن الجديد
+        .collection('VendorBill')
         .withConverter<CustomerInvoiceModel>(
           fromFirestore: (snapshot, options) =>
               CustomerInvoiceModel.fromFireStore(snapshot.data()),
@@ -1009,22 +1084,25 @@ class MyDatabase {
         );
   }
 
-  //vendor Bill
+  // إضافة فاتورة مورد جديدة - Auto ID + إرجاع الـ ID
+  static Future<String> addVendorBill(CustomerInvoiceModel bill) async {
+    final docRef = getVendorBillCollection().doc(); // Auto ID من فايربيز
 
-  static Future<void> addVendorBill(
-    CustomerInvoiceModel bill,
-    String billId,
-  ) async {
-    final docRef = getVendorBillCollection().doc(billId);
-    bill.id = billId;
+    bill.id = docRef.id; // تخزين الـ ID داخل الموديل
+
     await docRef.set(bill);
-    print("✅ تم حفظ فاتورة المورد بنجاح بالـ ID: $billId");
+
+    print("✅ تم حفظ فاتورة المورد بنجاح بالـ ID: ${docRef.id}");
+
+    return docRef.id; // نرجعه زي فواتير العملاء بالظبط
   }
 
+  // قراءة فاتورة مورد معينة
   static Future<CustomerInvoiceModel?> readVendorBill(String billId) async {
     return (await getVendorBillCollection().doc(billId).get()).data();
   }
 
+  // الحصول على كل فواتير المورد
   static Future<List<CustomerInvoiceModel>> getAllVendorBills() async {
     final snap = await getVendorBillCollection()
         .orderBy('dateTime', descending: true)
@@ -1033,24 +1111,32 @@ class MyDatabase {
     return snap.docs.map((e) => e.data()..id = e.id).toList();
   }
 
-  static Stream<QuerySnapshot<CustomerInvoiceModel>> getVendorBillStream() {
-    return getVendorBillCollection().snapshots();
+  // Stream لفواتير مورد معين
+  static Stream<QuerySnapshot<CustomerInvoiceModel>> getVendorBillStream(
+    String vendorId,
+  ) {
+    return getVendorBillCollection()
+        .where("customerId", isEqualTo: vendorId) // customerId مستخدم كمورد
+        .snapshots();
   }
 
+  // حذف فاتورة مورد
   static Future<void> deleteVendorBill(String billId) async {
     await getVendorBillCollection().doc(billId).delete();
     print("✅ تم حذف فاتورة المورد بنجاح بالـ ID: $billId");
   }
 
+  // تحديث فاتورة مورد
   static Future<void> updateVendorBill(CustomerInvoiceModel bill) async {
     if (bill.id == null) throw Exception("Bill ID is null");
     await getVendorBillCollection().doc(bill.id).update(bill.toFireStore());
     print("✅ تم تحديث فاتورة المورد بنجاح بالـ ID: ${bill.id}");
   }
 
+  // البحث عن فاتورة مورد بالـ invoiceNum (زي العملاء بالضبط)
   static Future<List<CustomerInvoiceModel>> getVendorBillById(String id) async {
     final snap = await getVendorBillCollection()
-        .where('id', isEqualTo: id)
+        .where('invoiceNum', isEqualTo: id)
         .get();
 
     return snap.docs.map((e) => e.data()..id = e.id).toList();

@@ -6,6 +6,7 @@ class VendorTransactionSummaryModel {
   String? vendorName;
   String? transactionType; // sale / return / receivePayment
   String? invoiceId; // رقم الفاتورة أو العملية
+  String? invoiceNum; // رقم الفاتورة أو العملية
   double? debtBefore;
   double? debtAfter;
   double? amount; // صافي العملية (صافي الفاتورة أو استلام)
@@ -18,6 +19,7 @@ class VendorTransactionSummaryModel {
     this.vendorName,
     this.transactionType,
     this.invoiceId,
+    this.invoiceNum,
     this.debtBefore,
     this.debtAfter,
     this.amount,
@@ -33,6 +35,7 @@ class VendorTransactionSummaryModel {
     vendorName: data?['vendorName'],
     transactionType: data?['transactionType'],
     invoiceId: data?['invoiceId'],
+    invoiceNum: data?['invoiceNum'],
     debtBefore: data?['debtBefore']?.toDouble(),
     debtAfter: data?['debtAfter']?.toDouble(),
     amount: data?['amount']?.toDouble(),
@@ -49,6 +52,7 @@ class VendorTransactionSummaryModel {
       'vendorName': vendorName,
       'transactionType': transactionType,
       'invoiceId': invoiceId,
+      'invoiceNum': invoiceNum,
       'debtBefore': debtBefore,
       'debtAfter': debtAfter,
       'amount': amount,

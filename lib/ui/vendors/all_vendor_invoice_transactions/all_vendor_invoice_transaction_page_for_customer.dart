@@ -64,10 +64,10 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
   void _openAddProductDialog() {
     showAddProductDialog(
       context,
-          (item) {
+      (item) {
         setState(() => _invoiceItems.add(item));
       },
-      isSale: false,  // ← هنا التعديل
+      isSale: false, // ← هنا التعديل
     );
   }
 
@@ -86,8 +86,11 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
     }
 
     final vendorName = _selectedVendor!.name ?? 'undefined'.tr();
+
+    // رقم بشري للفاتورة (عرض فقط)
     int currentCounter = await context.read<BuyCounterCubit>().getCounter();
-    int invoiceId = currentCounter + 1;
+    int invoiceNum = currentCounter + 1;
+
     double debtBefore = _selectedVendor!.openingBalance ?? 0.0;
 
     double debtAfter = _invoiceType == 'شراء'
@@ -96,6 +99,7 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
 
     List<ProductModel> invoiceItemsForSaving = _invoiceItems.map((item) {
       return ProductModel(
+        id: item['id'],
         productName: item['name'],
         salePrice: item['price'],
         qun: item['quantity'],
@@ -103,22 +107,27 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
       );
     }).toList();
 
-    await context.read<VendorBillCubit>().addVendorBill(
-      id: invoiceId.toString(),
-      vendorId: _selectedVendor!.id ?? '',
-      vendorName: vendorName,
-      invoiceType: _invoiceType,
-      items: invoiceItemsForSaving,
-      totalBeforeDiscount: _subtotal,
-      totalAfterDiscount: _grandTotal,
-      discount: _discountAmount,
-      debtBefore: debtBefore,
-      debtAfter: debtAfter,
-      dateTime: _selectedDate,
-    );
+    // 🔥 هنا أهم سطر: ناخد الـ Firestore ID الحقيقي
+    final String newInvoiceId = await context
+        .read<VendorBillCubit>()
+        .addVendorBill(
+          invoiceNum: invoiceNum.toString(),
+          vendorId: _selectedVendor!.id ?? '',
+          vendorName: vendorName,
+          invoiceType: _invoiceType,
+          items: invoiceItemsForSaving,
+          totalBeforeDiscount: _subtotal,
+          totalAfterDiscount: _grandTotal,
+          discount: _discountAmount,
+          debtBefore: debtBefore,
+          debtAfter: debtAfter,
+          dateTime: _selectedDate,
+        );
 
+    // تحديث الكاونتر بعد نجاح الحفظ
     await context.read<BuyCounterCubit>().updateCounter();
 
+    // تحديث رصيد المورد
     await context.read<VendorCubit>().updateVendorBalance(
       vendorId: _selectedVendor!.id ?? '',
       newBalance: debtAfter,
@@ -126,37 +135,43 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
 
     bool increaseStock = _invoiceType == 'شراء';
 
+    // تحديث المخزون
     for (var item in _invoiceItems) {
-      if (item['id'] != null && item['quantity'] != null) {
-        await context.read<ProductCubit>().changeProductQuantity(
-          productId: item['id'],
-          amount: item['quantity'],
-          increase: increaseStock,
-        );
-      }
+      await context.read<ProductCubit>().changeProductQuantity(
+        productId: item['id'],
+        amount: item['quantity'],
+        increase: increaseStock,
+      );
     }
 
     final productTransactionCubit = context.read<ProductTransactionCubit>();
 
+    // تسجيل حركة المنتجات وربطها بالـ Firestore ID
     for (var item in _invoiceItems) {
       final String productId = item['id'];
       final int quantity = item['quantity'];
 
       await productTransactionCubit.addTransaction(
-        transactionNum: invoiceId.toString(),
+        transactionNum: invoiceNum.toString(),
+        // للعرض فقط
         isCustomer: false,
         productId: productId,
         qun: _invoiceType == 'مرتجع' ? -quantity : quantity,
         name: _selectedVendor!.name!,
         transactionType: _invoiceType,
         transactionDate: _selectedDate,
+        transactionId: newInvoiceId, // 🔥 الربط الحقيقي
       );
     }
 
+    // تسجيل حركة حساب المورد وربطها بالـ Firestore ID
     await context.read<VendorTransactionSummaryCubit>().addTransaction(
       VendorTransactionSummaryModel(
         transactionType: _invoiceType,
-        invoiceId: invoiceId.toString(),
+        invoiceId: newInvoiceId,
+        invoiceNum: invoiceNum.toString(),
+
+        // 🔥 هنا كمان
         vendorId: _selectedVendor!.id!,
         vendorName: vendorName,
         amount: _grandTotal,
@@ -165,13 +180,15 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
         notes: notesController.text.isNotEmpty
             ? notesController.text
             : (_discountAmount > 0
-            ? 'invoice_with_discount'
-            .tr(args: [_invoiceType, _discountAmount.toStringAsFixed(2)])
-            : 'invoice'.tr(args: [_invoiceType])),
+                  ? 'invoice_with_discount'.tr(
+                      args: [_invoiceType, _discountAmount.toStringAsFixed(2)],
+                    )
+                  : 'invoice'.tr(args: [_invoiceType])),
         dateTime: _selectedDate,
       ),
     );
 
+    // تنظيف الصفحة
     setState(() {
       _invoiceItems.clear();
       _discountPercent = 0.0;
@@ -184,8 +201,7 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('invoice_saved'
-            .tr(args: [_invoiceType, vendorName])),
+        content: Text('invoice_saved'.tr(args: [_invoiceType, vendorName])),
         backgroundColor: Colors.green.shade600,
       ),
     );
@@ -235,8 +251,10 @@ class _AddInvoicePageState extends State<AddVendorInvoicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('vendor_invoice'.tr(),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        title: Text(
+          'vendor_invoice'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
         centerTitle: true,
         backgroundColor: Colors.blueGrey.shade800,
         elevation: 5,

@@ -442,7 +442,7 @@ class CustomerInvoiceByIdScreen extends StatelessWidget {
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => EditCustomerInvoice(invoiceId: invoiceId,)),
+          MaterialPageRoute(builder: (context) => EditCustomerInvoicePage(invoiceId: invoiceId,)),
         );
       },
       icon: Icon(Icons.edit, color: Colors.black),

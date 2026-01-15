@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:el_doctor/ui/customer/customer_details/payment_preview.dart';
 import 'package:excel/excel.dart';
 import 'package:file_selector/file_selector.dart';
@@ -8,15 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
-
-// ******** IMPORTات إضافية قد تحتاج إليها للتصدير ********
-// import 'package:excel/excel.dart'; // مثال لمكتبة التصدير
-// import 'package:path_provider/path_provider.dart'; // مثال لحفظ الملفات
-// import 'dart:io'; // مطلوب لمعالجة الملفات
-// ********************************************************
-
 import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_cubit.dart';
 import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_state.dart';
 import '../../../data/model/customer_model.dart';
@@ -27,14 +17,7 @@ class CustomerTransactionSummaryView extends StatelessWidget {
 
   const CustomerTransactionSummaryView({super.key, required this.customer});
 
-  // **********************************************
-  //           دالة التصدير إلى Excel
-  // **********************************************
-// دالة التصدير الفعلي
-// دالة التصدير الفعلي
-// **********************************************
-//           دالة التصدير إلى Excel المُعدلة
-// **********************************************
+
   void _exportToExcel(BuildContext context, List<dynamic> transactions) async {
     if (transactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,7 +62,7 @@ class CustomerTransactionSummaryView extends StatelessWidget {
       List<String> rowData = [
         type,
         t.dateTime != null ? dateFormat.format(t.dateTime!) : '--',
-        t.invoiceId ?? "-",
+        t.invoiceNum ?? "-",
         t.notes ?? "-",
         t.transactionType == 'مبيعات' ? (t.amount ?? 0).toStringAsFixed(2) : '',
         t.transactionType != 'مبيعات' ? (t.amount ?? 0).toStringAsFixed(2) : '',
@@ -251,18 +234,18 @@ class CustomerTransactionSummaryView extends StatelessWidget {
                                           if (t.transactionType == "تحصيل") {
                                             // قد تحتاج إلى تعديل اسم الشاشة (Screen) هنا حسب مشروعك
                                             return ReceivePaymentByIdScreen(
-                                              paymentId: t.invoiceId!,
+                                              paymentId: t.invoiceNum!,
                                               customerId: t.customerId!,
                                             );
                                           }
                                           return CustomerInvoiceByIdScreen(
-                                            invoiceId: t.invoiceId!,
+                                            invoiceId: t.invoiceNum!,
                                           );
                                         },
                                       ),
                                     );
                                   },
-                                  child: Text(t.invoiceId ?? "-"),
+                                  child: Text(t.invoiceNum ?? "-"),
                                 ),
                               ),
                               DataCell(Text(t.notes ?? "-")),

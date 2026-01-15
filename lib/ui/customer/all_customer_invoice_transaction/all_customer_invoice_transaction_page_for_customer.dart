@@ -60,13 +60,9 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
   }
 
   void _openAddProductDialog() {
-    showAddProductDialog(
-      context,
-          (item) {
-        setState(() => _invoiceItems.add(item));
-      },
-      isSale: true,
-    );
+    showAddProductDialog(context, (item) {
+      setState(() => _invoiceItems.add(item));
+    }, isSale: true);
   }
 
   Future<void> _saveInvoice() async {
@@ -84,16 +80,22 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
     }
 
     final customerName = _selectedCustomer!.name ?? 'غير محدد';
+
+    // 🔹 invoiceNum للعرض فقط – ما بقاش ID
     int currentCounter = await context.read<SaleCounterCubit>().getCounter();
-    int invoiceId = currentCounter + 1;
+    int invoiceNum = currentCounter + 1;
+
     double debtBefore = _selectedCustomer!.openingBalance ?? 0.0;
 
+    // الرصيد الجديد
     double debtAfter = _invoiceType == 'مبيعات'
         ? debtBefore + _grandTotal
         : debtBefore - _grandTotal;
 
+    // تجهيز المنتجات للحفظ
     List<ProductModel> invoiceItemsForSaving = _invoiceItems.map((item) {
       return ProductModel(
+        id: item['id'],
         productName: item['name'],
         salePrice: item['price'],
         qun: item['quantity'],
@@ -101,36 +103,42 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
       );
     }).toList();
 
-    final String invoiceTypeForSaving = _invoiceType; // يبقى عربي عند الحفظ
+    final String invoiceTypeForSaving = _invoiceType;
 
-    // حفظ الفاتورة
-    await context.read<CustomerInvoicesCubit>().addCustomerInvoice(
-      id: invoiceId.toString(),
-      customerId: _selectedCustomer!.id ?? '',
-      customerName: customerName,
-      invoiceType: invoiceTypeForSaving,
-      items: invoiceItemsForSaving,
-      totalBeforeDiscount: _subtotal,
-      totalAfterDiscount: _grandTotal,
-      discount: _discountAmount,
-      debtBefore: debtBefore,
-      debtAfter: debtAfter,
-      dateTime: _selectedDate,
-      notes: notesController.text.isNotEmpty
-          ? notesController.text
-          : (_discountAmount > 0
-          ? "فاتورة $_invoiceType مع خصم $_discountAmount"
-          : "فاتورة $_invoiceType"),
-    );
+    // -----------------------------
+    // 🔥 حفظ الفاتورة والحصول على الـ Firebase Auto-ID
+    // -----------------------------
+    final String firestoreId = await context
+        .read<CustomerInvoicesCubit>()
+        .addCustomerInvoice(
+          invoiceNum: invoiceNum.toString(),
+          customerId: _selectedCustomer!.id ?? '',
+          customerName: customerName,
+          invoiceType: invoiceTypeForSaving,
+          items: invoiceItemsForSaving,
+          totalBeforeDiscount: _subtotal,
+          totalAfterDiscount: _grandTotal,
+          discount: _discountAmount,
+          debtBefore: debtBefore,
+          debtAfter: debtAfter,
+          dateTime: _selectedDate,
+          notes: notesController.text.isNotEmpty
+              ? notesController.text
+              : (_discountAmount > 0
+                    ? "فاتورة $_invoiceType مع خصم $_discountAmount"
+                    : "فاتورة $_invoiceType"),
+        );
 
+    // 🔹 زيادة الكاونتر بعد نجاح حفظ الفاتورة
     await context.read<SaleCounterCubit>().updateCounter();
 
+    // 🔹 تحديث رصيد العميل
     await context.read<CustomerCubit>().updateCustomerBalance(
       customerId: _selectedCustomer!.id ?? '',
       newBalance: debtAfter,
     );
 
-    // تعديل كميات المنتجات
+    // 🔹 تعديل مخزون المنتجات
     bool increaseStock = _invoiceType == 'مرتجع';
     for (var item in _invoiceItems) {
       if (item['id'] != null && item['quantity'] != null) {
@@ -142,29 +150,35 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
       }
     }
 
+    // 🔹 إضافة حركة المنتج (Product Transaction)
     final productTransactionCubit = context.read<ProductTransactionCubit>();
-
     for (var item in _invoiceItems) {
       final String productId = item['id'];
       final int quantity = item['quantity'];
 
       await productTransactionCubit.addTransaction(
-        transactionNum: invoiceId.toString(),
+        transactionNum: invoiceNum.toString(),
         isCustomer: true,
         productId: productId,
         qun: _invoiceType == 'مبيعات' ? -quantity : quantity,
         name: _selectedCustomer!.name!,
         transactionType: _invoiceType,
         transactionDate: _selectedDate,
+        transactionId: firestoreId,
       );
     }
 
-    // حركة العميل
+    // -----------------------------
+    // 🔥 إضافة حركة العميل Customer Transaction Summary
+    // تستخدم الآن firebase Id
+    // -----------------------------
     final transactionCubit = context.read<CustomerTransactionSummaryCubit>();
     await transactionCubit.addTransaction(
       CustomerTransactionSummaryModel(
+        invoiceId: firestoreId,
+        // ← مهم جداً
         transactionType: _invoiceType,
-        invoiceId: invoiceId.toString(),
+        invoiceNum: invoiceNum.toString(),
         customerId: _selectedCustomer!.id!,
         customerName: customerName,
         amount: _grandTotal,
@@ -173,12 +187,15 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
         notes: notesController.text.isNotEmpty
             ? notesController.text
             : (_discountAmount > 0
-            ? "فاتورة $_invoiceType مع خصم $_discountAmount"
-            : "فاتورة $_invoiceType"),
+                  ? "فاتورة $_invoiceType مع خصم $_discountAmount"
+                  : "فاتورة $_invoiceType"),
         dateTime: _selectedDate,
       ),
     );
 
+    // -----------------------------
+    // 🔹 Reset – تنظيف الواجهة
+    // -----------------------------
     setState(() {
       _invoiceItems.clear();
       _discountPercent = 0.0;
@@ -192,8 +209,7 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-            'تم حفظ الفاتورة $_invoiceType للعميل $customerName'),
+        content: Text('تم حفظ الفاتورة $_invoiceType للعميل $customerName'),
         backgroundColor: Colors.green.shade600,
       ),
     );
@@ -239,8 +255,10 @@ class _AddInvoicePageState extends State<AddInvoicePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('invoice_header'.tr(),
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        title: Text(
+          'invoice_header'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
         centerTitle: true,
         backgroundColor: Colors.blueGrey.shade800,
         elevation: 5,

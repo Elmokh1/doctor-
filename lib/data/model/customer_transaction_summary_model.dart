@@ -5,7 +5,8 @@ class CustomerTransactionSummaryModel {
   String? customerId;
   String? customerName;
   String? transactionType; // sale / return / receivePayment
-  String? invoiceId; // رقم الفاتورة أو العملية
+  String? invoiceId; // sale / return / receivePayment
+  String? invoiceNum; // رقم الفاتورة أو العملية
   double? debtBefore;
   double? debtAfter;
   double? amount; // صافي العملية (صافي الفاتورة أو استلام)
@@ -15,9 +16,10 @@ class CustomerTransactionSummaryModel {
   CustomerTransactionSummaryModel({
     this.id,
     this.customerId,
+    this.invoiceId,
     this.customerName,
     this.transactionType,
-    this.invoiceId,
+    this.invoiceNum,
     this.debtBefore,
     this.debtAfter,
     this.amount,
@@ -32,6 +34,7 @@ class CustomerTransactionSummaryModel {
     customerId: data?['customerId'],
     customerName: data?['customerName'],
     transactionType: data?['transactionType'],
+    invoiceNum: data?['invoiceNum'],
     invoiceId: data?['invoiceId'],
     debtBefore: data?['debtBefore']?.toDouble(),
     debtAfter: data?['debtAfter']?.toDouble(),
@@ -48,6 +51,7 @@ class CustomerTransactionSummaryModel {
       'customerId': customerId,
       'customerName': customerName,
       'transactionType': transactionType,
+      'invoiceNum': invoiceNum,
       'invoiceId': invoiceId,
       'debtBefore': debtBefore,
       'debtAfter': debtAfter,

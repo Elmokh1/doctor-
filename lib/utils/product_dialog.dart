@@ -8,10 +8,10 @@ import 'package:el_doctor/data/model/product_model.dart';
 typedef OnItemAdded = void Function(Map<String, dynamic> item);
 
 void showAddProductDialog(
-    BuildContext context,
-    OnItemAdded onItemAdded, {
-      required bool isSale,
-    }) {
+  BuildContext context,
+  OnItemAdded onItemAdded, {
+  required bool isSale,
+}) {
   ProductModel? selectedProduct;
   int quantity = 1;
 
@@ -29,12 +29,14 @@ void showAddProductDialog(
                   children: [
                     BlocBuilder<ProductCubit, ProductState>(
                       builder: (context, state) {
-                        List<ProductModel> products =
-                        (state is ProductLoaded) ? state.sections : [];
+                        List<ProductModel> products = (state is ProductLoaded)
+                            ? state.sections
+                            : [];
 
                         return DropdownButtonFormField<ProductModel>(
-                          decoration:
-                          InputDecoration(labelText: 'choose_product'.tr()),
+                          decoration: InputDecoration(
+                            labelText: 'choose_product'.tr(),
+                          ),
                           value: selectedProduct,
                           items: products.map((product) {
                             return DropdownMenuItem<ProductModel>(
@@ -54,8 +56,7 @@ void showAddProductDialog(
                     TextField(
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(labelText: 'quantity'.tr()),
-                      onChanged: (value) =>
-                      quantity = int.tryParse(value) ?? 1,
+                      onChanged: (value) => quantity = int.tryParse(value) ?? 1,
                     ),
 
                     const SizedBox(height: 15),
@@ -67,9 +68,9 @@ void showAddProductDialog(
                         labelText: 'unit_price'.tr(),
                         hintText: selectedProduct != null
                             ? (isSale
-                            ? (selectedProduct!.salePrice ?? 0.0)
-                            : (selectedProduct!.buyPrice ?? 0.0))
-                            .toString()
+                                      ? (selectedProduct!.salePrice ?? 0.0)
+                                      : (selectedProduct!.buyPrice ?? 0.0))
+                                  .toString()
                             : 'select_product_first'.tr(),
                       ),
                     ),

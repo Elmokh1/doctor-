@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:el_doctor/cubits/vendors_cubit/vendor_cubit.dart';
 import 'package:excel/excel.dart' as excel_format; // 👈 إضافة
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -9,10 +10,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:path_provider/path_provider.dart'; // 👈 إضافة
 import 'package:share_plus/share_plus.dart'; // 👈 إضافة
 
-
+import '../../../cubits/cash_box_cubit/cash_box_cubit.dart';
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_cubit.dart';
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_state.dart';
+import '../../../cubits/vendor_transaction_summury_cubit/vendor_transaction_summury_cubit.dart';
+import '../../../cubits/vendor_transaction_summury_cubit/vendor_transaction_summury_state.dart';
+import '../../../cubits/vendors_cubit/vendor_state.dart';
 import '../../../data/model/pay_vendor.dart';
+import '../../../data/model/vendor_model.dart';
+import '../../../data/model/vendor_transaction_summary_model.dart';
 
 class PaymentToVendor extends StatelessWidget {
   final String paymentId;
@@ -37,7 +43,10 @@ class PaymentToVendor extends StatelessWidget {
   // **********************************************
   //           دالة التصدير إلى Excel
   // **********************************************
-  void _exportPaymentToExcel(BuildContext context, PayVendorModel payment) async {
+  void _exportPaymentToExcel(
+    BuildContext context,
+    PayVendorModel payment,
+  ) async {
     var excel = excel_format.Excel.createExcel();
     excel_format.Sheet sheetObject = excel[tr("vendor_payment_receipt")];
     final int maxCols = 4;
@@ -46,12 +55,22 @@ class PaymentToVendor extends StatelessWidget {
     // **********************************
     // 1. العنوان الرئيسي
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr('دفع'))
       ..cellStyle = excel_format.CellStyle(
         bold: true,
@@ -67,24 +86,46 @@ class PaymentToVendor extends StatelessWidget {
     // **********************************
 
     void addDetailRow(String label, String value, {bool boldValue = false}) {
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0, rowIndex: rowIndex),
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 1,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
           excel_format.CellIndex.indexByColumnRow(
-              columnIndex: 1, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0, rowIndex: rowIndex))
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
         ..value = excel_format.TextCellValue(label)
         ..cellStyle = excel_format.CellStyle(bold: true);
 
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 2, rowIndex: rowIndex),
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 2,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: maxCols - 1,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
           excel_format.CellIndex.indexByColumnRow(
-              columnIndex: maxCols - 1, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 2, rowIndex: rowIndex))
+            columnIndex: 2,
+            rowIndex: rowIndex,
+          ),
+        )
         ..value = excel_format.TextCellValue(value)
-        ..cellStyle = excel_format.CellStyle(bold: boldValue,
-            horizontalAlign: excel_format.HorizontalAlign.Right);
+        ..cellStyle = excel_format.CellStyle(
+          bold: boldValue,
+          horizontalAlign: excel_format.HorizontalAlign.Right,
+        );
       rowIndex++;
     }
 
@@ -97,88 +138,145 @@ class PaymentToVendor extends StatelessWidget {
     // **********************************
     // 3. الملخص المالي
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr("payment_details"))
-      ..cellStyle = excel_format.CellStyle(bold: true,
-          backgroundColorHex: excel_format.ExcelColor.fromHexString(
-              "FFE0E0E0"));
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        backgroundColorHex: excel_format.ExcelColor.fromHexString("FFE0E0E0"),
+      );
     rowIndex++;
 
     addDetailRow(tr('balance_before'), _formatCurrency(payment.oldBalance));
-    addDetailRow(tr('received_amount'), _formatCurrency(payment.amount),
-        boldValue: true);
+    addDetailRow(
+      tr('received_amount'),
+      _formatCurrency(payment.amount),
+      boldValue: true,
+    );
 
     // تنسيق الرصيد بعد الدفع
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr('balance_after'))
-      ..cellStyle = excel_format.CellStyle(bold: true,
-          backgroundColorHex: excel_format.ExcelColor.fromHexString(
-              "FFC0E4FF"));
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"),
+      );
 
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 2, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 2, rowIndex: rowIndex))
+          columnIndex: 2,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(_formatCurrency(payment.newBalance))
-      ..cellStyle = excel_format.CellStyle(bold: true,
-          horizontalAlign: excel_format.HorizontalAlign.Right,
-          backgroundColorHex: excel_format.ExcelColor.fromHexString(
-              "FFC0E4FF"));
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        horizontalAlign: excel_format.HorizontalAlign.Right,
+        backgroundColorHex: excel_format.ExcelColor.fromHexString("FFC0E4FF"),
+      );
     rowIndex++;
     rowIndex++;
 
     // **********************************
     // 4. الملاحظات
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr("transaction_notes"))
-      ..cellStyle = excel_format.CellStyle(bold: true,
-          backgroundColorHex: excel_format.ExcelColor.fromHexString(
-              "FFE0E0E0"));
+      ..cellStyle = excel_format.CellStyle(
+        bold: true,
+        backgroundColorHex: excel_format.ExcelColor.fromHexString("FFE0E0E0"),
+      );
     rowIndex++;
 
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(
-          payment.transactionDetails?.isNotEmpty == true ? payment
-              .transactionDetails! : tr('no_notes_available'))
+        payment.transactionDetails?.isNotEmpty == true
+            ? payment.transactionDetails!
+            : tr('no_notes_available'),
+      )
       ..cellStyle = excel_format.CellStyle(
-          horizontalAlign: excel_format.HorizontalAlign.Right);
+        horizontalAlign: excel_format.HorizontalAlign.Right,
+      );
     rowIndex++;
 
     sheetObject.setColumnWidth(0, 18.0);
     sheetObject.setColumnWidth(2, 25.0);
-
 
     // **********************************
     // 5. الحفظ والمشاركة
     // **********************************
     try {
       final fileName =
-          'VendorPayment_${payment.id ?? "Unknown"}_${DateFormat('yyyyMMdd')
-          .format(
-          DateTime.now())}.xlsx';
+          'VendorPayment_${payment.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
 
       final FileSaveLocation? location = await getSaveLocation(
         suggestedName: fileName,
@@ -221,10 +319,7 @@ class PaymentToVendor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    context.read<PayVendorInvoiceCubit>().fetchPaymentById(
-      vendorId,
-      paymentId,
-    );
+    context.read<PayVendorInvoiceCubit>().fetchPaymentById(vendorId, paymentId);
 
     return Scaffold(
       appBar: AppBar(
@@ -232,6 +327,16 @@ class PaymentToVendor extends StatelessWidget {
         centerTitle: true,
         backgroundColor: Colors.teal,
         actions: [
+          IconButton(
+            onPressed: () {
+              final state = context.read<PayVendorInvoiceCubit>().state;
+              if (state is PayVendorInvoiceLoaded &&
+                  state.transactions.isNotEmpty) {
+                _showEditDialog(context, state.transactions.first);
+              }
+            },
+            icon: Icon(Icons.edit, color: Colors.red),
+          ),
           _buildExportButton(context), // 👈 زر التصدير
         ],
       ),
@@ -242,16 +347,12 @@ class PaymentToVendor extends StatelessWidget {
           }
 
           if (state is PayVendorInvoiceError) {
-            return Center(
-              child: Text(state.message),
-            );
+            return Center(child: Text(state.message));
           }
 
           if (state is PayVendorInvoiceLoaded) {
             if (state.transactions.isEmpty) {
-              return Center(
-                child: Text('no_data_found_for_receipt'.tr()),
-              );
+              return Center(child: Text('no_data_found_for_receipt'.tr()));
             }
 
             final PayVendorModel payment = state.transactions.first;
@@ -265,7 +366,10 @@ class PaymentToVendor extends StatelessWidget {
                   _infoCard(
                     children: [
                       _labeledRow('receipt_id'.tr(), payment.id ?? '-'),
-                      _labeledRow('vendor_name'.tr(), payment.customerName ?? '-'),
+                      _labeledRow(
+                        'vendor_name'.tr(),
+                        payment.customerName ?? '-',
+                      ),
                       _labeledRow('date'.tr(), _formatDate(payment.dateTime)),
                     ],
                   ),
@@ -274,10 +378,19 @@ class PaymentToVendor extends StatelessWidget {
                   _sectionTitle('payment_details'.tr()),
                   _infoCard(
                     children: [
-                      _labeledRow('balance_before'.tr(), _formatCurrency(payment.oldBalance)),
-                      _labeledRow('received_amount'.tr(), _formatCurrency(payment.amount)),
+                      _labeledRow(
+                        'balance_before'.tr(),
+                        _formatCurrency(payment.oldBalance),
+                      ),
+                      _labeledRow(
+                        'received_amount'.tr(),
+                        _formatCurrency(payment.amount),
+                      ),
                       const Divider(),
-                      _labeledRow('balance_after'.tr(), _formatCurrency(payment.newBalance)),
+                      _labeledRow(
+                        'balance_after'.tr(),
+                        _formatCurrency(payment.newBalance),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -296,8 +409,6 @@ class PaymentToVendor extends StatelessWidget {
                       ),
                     ],
                   ),
-
-
                 ],
               ),
             );
@@ -314,18 +425,19 @@ class PaymentToVendor extends StatelessWidget {
   // **********************************
   Widget _buildExportButton(BuildContext context) {
     return BlocSelector<PayVendorInvoiceCubit, PayVendorInvoiceState, bool>(
-      selector: (state) => state is PayVendorInvoiceLoaded && state.transactions.isNotEmpty,
+      selector: (state) =>
+          state is PayVendorInvoiceLoaded && state.transactions.isNotEmpty,
       builder: (context, canExport) {
         return IconButton(
           icon: const Icon(Icons.file_download, color: Colors.white),
           tooltip: tr("export_to_excel"),
           onPressed: canExport
               ? () {
-            final state = context.read<PayVendorInvoiceCubit>().state;
-            if (state is PayVendorInvoiceLoaded) {
-              _exportPaymentToExcel(context, state.transactions.first);
-            }
-          }
+                  final state = context.read<PayVendorInvoiceCubit>().state;
+                  if (state is PayVendorInvoiceLoaded) {
+                    _exportPaymentToExcel(context, state.transactions.first);
+                  }
+                }
               : null,
         );
       },
@@ -377,4 +489,174 @@ class PaymentToVendor extends StatelessWidget {
       ),
     );
   }
+
+  void _showEditDialog(BuildContext context, PayVendorModel payment) {
+    final TextEditingController amountController =
+    TextEditingController(text: payment.amount?.toString() ?? '');
+    DateTime? selectedDate = payment.dateTime;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(tr('edit_payment')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // تعديل المبلغ
+                    TextFormField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: tr('received_amount'),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // اختيار التاريخ
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) setState(() => selectedDate = picked);
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: tr('date'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        child: Text(
+                          selectedDate == null
+                              ? tr('select_date')
+                              : DateFormat('yyyy-MM-dd').format(selectedDate!),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(tr('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // قراءة القيم الجديدة
+                    final newAmount =
+                    double.tryParse(amountController.text.trim());
+                    if (newAmount == null || selectedDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(tr('enter_valid_values'))),
+                      );
+                      return;
+                    }
+
+                    // فرق المبلغ بين الجديد والقديم
+                    final difference = newAmount - payment.amount!;
+
+                    // جلب رصيد المورد الحالي (Opening Balance) من VendorCubit
+                    final vendorState = context.read<VendorCubit>().state;
+                    double openingBalance = 0;
+                    if (vendorState is VendorLoaded) {
+                      final vendor = vendorState.vendors.firstWhere(
+                            (v) => v.id == payment.customerId,
+                        orElse: () => VendorModel(name: '', openingBalance: 0),
+                      );
+                      openingBalance = vendor.openingBalance ?? 0;
+                    }
+
+                    // تحديث رصيد المورد
+                    final updatedBalance = openingBalance - difference;
+                    await context.read<VendorCubit>().updateVendorBalance(
+                      vendorId: payment.customerId!,
+                      newBalance: updatedBalance,
+                    );
+
+                    // تحديث الكاش بوكس زي العميل
+                    await context.read<CashBoxCubit>().updateCash(
+                      difference,
+                      isIncome: false, // الدفع للمورد يقلل الكاش
+                    );
+
+                    // تحديث الدفع نفسه
+                    final updatedPayment = PayVendorModel(
+                      id: payment.id,
+                      customerName: payment.customerName,
+                      customerId: payment.customerId,
+                      amount: newAmount,
+                      cashBoxBefore: payment.cashBoxBefore,
+                      cashBoxAfter: payment.cashBoxAfter,
+                      oldBalance: payment.oldBalance,
+                      newBalance: payment.oldBalance! - newAmount,
+                      transactionDetails: payment.transactionDetails,
+                      dateTime: selectedDate,
+                    );
+
+                    await context.read<PayVendorInvoiceCubit>().updatePayVendorInvoice(
+                      vendorId: payment.customerId!,
+                      payment: updatedPayment,
+                    );
+
+                    // تحديث حركة المورد (VendorTransactionSummary) لو موجودة
+                    final transactionState =
+                        context.read<VendorTransactionSummaryCubit>().state;
+                    if (transactionState is VendorTransactionSummaryLoaded) {
+                      final matching = transactionState.transactions
+                          .firstWhere(
+                            (t) => t.invoiceId == payment.id,
+                        orElse: () => VendorTransactionSummaryModel(
+                          id: '',
+                          vendorId: payment.customerId,
+                          vendorName: payment.customerName,
+                          invoiceId: paymentId,
+                          invoiceNum: payment.id,
+                          amount: newAmount,
+                          debtBefore: payment.oldBalance ?? 0,
+                          debtAfter: updatedBalance,
+                          transactionType: 'دفع',
+                          dateTime: selectedDate,
+                          notes: payment.transactionDetails,
+                        ),
+                      );
+
+                      final updatedTransaction = VendorTransactionSummaryModel(
+                        id: matching.id,
+                        vendorId: payment.customerId,
+                        vendorName: payment.customerName,
+                        invoiceId: paymentId,
+                        invoiceNum: payment.id,
+                        amount: newAmount,
+                        debtBefore: matching.debtBefore,
+                        debtAfter: updatedBalance,
+                        transactionType: 'دفع',
+                        dateTime: selectedDate,
+                        notes: payment.transactionDetails,
+                      );
+
+                      await context
+                          .read<VendorTransactionSummaryCubit>()
+                          .updateTransaction(updatedTransaction);
+                    }
+
+                    Navigator.pop(context);
+                  },
+                  child: Text(tr('save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
 }

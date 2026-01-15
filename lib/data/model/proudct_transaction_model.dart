@@ -7,6 +7,7 @@ class ProductTransactionModel {
   String? name;
   String? transactionType;
   String? transactionNum;
+  String? invoiceId;
   bool? isCustomer;
   DateTime? transactionDate;
 
@@ -14,6 +15,7 @@ class ProductTransactionModel {
     this.id,
     this.qun,
     this.transactionType,
+    this.invoiceId,
     this.name,
     this.transactionNum,
     this.isCustomer,
@@ -25,13 +27,13 @@ class ProductTransactionModel {
         id: data?['id'],
         qun: (data?['qun'] ?? 0).toInt(),
         transactionType: data?['transactionType'],
+        invoiceId: data?['invoiceId'],
         name: data?['name'],
         transactionNum: data?['transactionNum'],
         isCustomer: data?['isCustomer'],
-    transactionDate: data?["transactionDate"] != null
-        ? DateTime.fromMillisecondsSinceEpoch(data?["transactionDate"])
-        : null,
-
+        transactionDate: data?["transactionDate"] != null
+            ? DateTime.fromMillisecondsSinceEpoch(data?["transactionDate"])
+            : null,
       );
 
   Map<String, dynamic> toFireStore() {
@@ -39,11 +41,11 @@ class ProductTransactionModel {
       'id': id,
       'qun': qun,
       'transactionType': transactionType,
+      'invoiceId': invoiceId,
       'name': name,
       'transactionNum': transactionNum,
       'isCustomer': isCustomer,
       "transactionDate": transactionDate?.millisecondsSinceEpoch,
-
     };
   }
 }

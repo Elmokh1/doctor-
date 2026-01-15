@@ -1,6 +1,7 @@
 class ReceivePaymentModel {
   static const String collectionName = 'ReceivePayment';
   String? id;
+  String? invoiceNum;
   String? customerName;
   String? customerId;
   String? transactionDetails;
@@ -14,6 +15,7 @@ class ReceivePaymentModel {
   ReceivePaymentModel({
     this.id,
     this.customerName,
+    this.invoiceNum,
     this.customerId,
     this.dateTime,
     this.amount,
@@ -27,6 +29,7 @@ class ReceivePaymentModel {
   ReceivePaymentModel.fromFireStore(Map<String, dynamic>? data)
     : this(
         id: data?['id'],
+    invoiceNum: data?['invoiceNum'],
         customerName: data?['customerName'],
         customerId: data?['customerId'],
         amount: data?['amount'],
@@ -43,6 +46,7 @@ class ReceivePaymentModel {
   Map<String, dynamic> toFireStore() {
     return {
       'id': id,
+      'invoiceNum': invoiceNum,
       'customerName': customerName,
       "customerId": customerId,
       "amount": amount,

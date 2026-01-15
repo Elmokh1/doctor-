@@ -7,9 +7,9 @@ import 'customer_invoice_state.dart';
 class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
   CustomerInvoicesCubit() : super(CustomerInvoiceInitial());
 
-  // إضافة فاتورة عميل جديدة
-  Future<void> addCustomerInvoice({
-    required String id,
+  // إضافة فاتورة عميل جديدة – ترجع Auto ID من فايربيز
+  Future<String> addCustomerInvoice({
+    required String invoiceNum,
     required String customerId,
     required String customerName,
     required String invoiceType,
@@ -25,7 +25,7 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
     emit(CustomerInvoiceLoading());
     try {
       final invoice = CustomerInvoiceModel(
-        id: id,
+        invoiceNum: invoiceNum,
         customerId: customerId,
         customerName: customerName,
         invoiceType: invoiceType,
@@ -39,12 +39,19 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
         dateTime: dateTime,
       );
 
-      await MyDatabase.addCustomerInvoice(invoice, id);
+      // 🔥 استخدمنا MyDatabase وأخذنا الـ Auto ID
+      final String firestoreId = await MyDatabase.addCustomerInvoice(invoice);
 
       emit(CustomerInvoiceSuccess());
-      getCustomerInvoices(customerId); // تحديث القائمة بعد الإضافة
+
+      // تحديث قائمة الفواتير
+      getCustomerInvoices(customerId);
+
+      // 👈 مهم جداً: نرجعه
+      return firestoreId;
     } catch (e) {
       emit(CustomerInvoiceError("حدث خطأ أثناء الحفظ: $e"));
+      return Future.error(e);
     }
   }
 
@@ -52,7 +59,7 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
   void getCustomerInvoices(String customerId) {
     emit(CustomerInvoiceLoading());
     MyDatabase.getCustomerInvoiceStream(customerId).listen(
-      (snapshot) {
+          (snapshot) {
         final invoices = snapshot.docs.map((e) => e.data()).toList();
         emit(CustomerInvoiceLoaded(invoices));
       },
@@ -69,6 +76,34 @@ class CustomerInvoicesCubit extends Cubit<CustomerInvoiceState> {
       emit(CustomerInvoiceLoaded(invoices));
     } catch (e) {
       emit(CustomerInvoiceError("حدث خطأ أثناء جلب الفواتير: $e"));
+    }
+  }
+
+
+  Future<void> replaceCustomerInvoice({
+    required CustomerInvoiceModel oldInvoice,
+    required CustomerInvoiceModel newInvoice,
+  }) async {
+    emit(CustomerInvoiceLoading());
+    try {
+      // 1️⃣ احذف الفاتورة القديمة
+      await MyDatabase.deleteCustomerInvoice(oldInvoice.id!);
+
+      // 2️⃣ احتفظ بنفس invoiceNum و debtBefore
+      newInvoice.invoiceNum = oldInvoice.invoiceNum;
+      newInvoice.debtBefore = oldInvoice.debtBefore;
+
+      // 3️⃣ احفظ الفاتورة الجديدة واحصل على الـ ID الجديد
+      final newId = await MyDatabase.addCustomerInvoice(newInvoice);
+      newInvoice.id = newId;
+
+      emit(CustomerInvoiceSuccess());
+
+      // 4️⃣ حدث قائمة الفواتير
+      getCustomerInvoices(newInvoice.customerId!);
+
+    } catch (e) {
+      emit(CustomerInvoiceError("حدث خطأ أثناء استبدال الفاتورة: $e"));
     }
   }
 

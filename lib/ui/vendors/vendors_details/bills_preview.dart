@@ -5,15 +5,15 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-// تم إزالة: import 'package:printing/printing.dart';
+
 import 'package:easy_localization/easy_localization.dart';
-import 'package:path_provider/path_provider.dart'; // 👈 إضافة
 import 'package:share_plus/share_plus.dart'; // 👈 إضافة
 
 import '../../../cubits/vendor_bills_cubit/vendor_bills_cubit.dart';
 import '../../../cubits/vendor_bills_cubit/vendor_bills_state.dart';
 import '../../../data/model/all_invoice_for_customer.dart';
 import '../../../data/model/product_model.dart';
+import 'edit_vendor_invoice.dart';
 // تم إزالة: import '../../customer/customer_details/print.dart';
 
 class VendorBillByIdScreen extends StatelessWidget {
@@ -23,7 +23,8 @@ class VendorBillByIdScreen extends StatelessWidget {
 
   String _formatDate(dynamic dateValue) {
     if (dateValue == null) return "N/A";
-    if (dateValue is DateTime) return DateFormat('yyyy-MM-dd').format(dateValue);
+    if (dateValue is DateTime)
+      return DateFormat('yyyy-MM-dd').format(dateValue);
     if (dateValue is String) {
       try {
         return dateValue.split(" ")[0];
@@ -37,7 +38,10 @@ class VendorBillByIdScreen extends StatelessWidget {
   // **********************************************
   //           دالة التصدير إلى Excel
   // **********************************************
-  void _exportBillToExcel(BuildContext context, CustomerInvoiceModel bill) async {
+  void _exportBillToExcel(
+    BuildContext context,
+    CustomerInvoiceModel bill,
+  ) async {
     var excel = excel_format.Excel.createExcel();
     excel_format.Sheet sheetObject = excel[tr("vendor_bill")];
     final int maxCols = 6;
@@ -46,12 +50,22 @@ class VendorBillByIdScreen extends StatelessWidget {
     // **********************************
     // 1. العنوان الرئيسي
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
+    sheetObject.cell(
         excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
-    sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+      )
       ..value = excel_format.TextCellValue(tr('${bill.invoiceType}'))
       ..cellStyle = excel_format.CellStyle(
         bold: true,
@@ -64,25 +78,47 @@ class VendorBillByIdScreen extends StatelessWidget {
     // **********************************
     // 2. تفاصيل الفاتورة
     // **********************************
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex),
-        excel_format.CellIndex.indexByColumnRow(
-            columnIndex: 2, rowIndex: rowIndex));
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 0,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 2,
+        rowIndex: rowIndex,
+      ),
+    );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 0, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
-        "${tr('vendor_name')}: ${bill.customerName ?? tr('unknown')}");
+      "${tr('vendor_name')}: ${bill.customerName ?? tr('unknown')}",
+    );
 
-    sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 3, rowIndex: rowIndex),
-        excel_format.CellIndex.indexByColumnRow(
-            columnIndex: maxCols - 1, rowIndex: rowIndex));
+    sheetObject.merge(
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: 3,
+        rowIndex: rowIndex,
+      ),
+      excel_format.CellIndex.indexByColumnRow(
+        columnIndex: maxCols - 1,
+        rowIndex: rowIndex,
+      ),
+    );
     sheetObject
-        .cell(excel_format.CellIndex.indexByColumnRow(
-        columnIndex: 3, rowIndex: rowIndex))
+        .cell(
+          excel_format.CellIndex.indexByColumnRow(
+            columnIndex: 3,
+            rowIndex: rowIndex,
+          ),
+        )
         .value = excel_format.TextCellValue(
-        "${tr('date')}: ${_formatDate(bill.dateTime)}");
+      "${tr('date')}: ${_formatDate(bill.dateTime)}",
+    );
 
     rowIndex++;
     rowIndex++; // فراغ قبل الجدول
@@ -96,26 +132,39 @@ class VendorBillByIdScreen extends StatelessWidget {
       backgroundColorHex: excel_format.ExcelColor.fromHexString("FFD3E8E5"),
       horizontalAlign: excel_format.HorizontalAlign.Center,
       topBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       bottomBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       leftBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       rightBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
     );
 
     List<String> productHeaders = [
-      tr('product'), tr('qty'), tr('price'), tr('total'),
+      tr('product'),
+      tr('qty'),
+      tr('price'),
+      tr('total'),
     ];
     sheetObject.appendRow(
-        productHeaders.map((h) => excel_format.TextCellValue(h)).toList());
+      productHeaders.map((h) => excel_format.TextCellValue(h)).toList(),
+    );
 
     for (int col = 0; col < productHeaders.length; col++) {
       sheetObject
-          .cell(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: col, rowIndex: rowIndex))
-          .cellStyle = headerStyle;
+              .cell(
+                excel_format.CellIndex.indexByColumnRow(
+                  columnIndex: col,
+                  rowIndex: rowIndex,
+                ),
+              )
+              .cellStyle =
+          headerStyle;
     }
 
     rowIndex++;
@@ -124,13 +173,17 @@ class VendorBillByIdScreen extends StatelessWidget {
       horizontalAlign: excel_format.HorizontalAlign.Right,
       numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
       topBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       bottomBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       leftBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
       rightBorder: excel_format.Border(
-          borderStyle: excel_format.BorderStyle.Thin),
+        borderStyle: excel_format.BorderStyle.Thin,
+      ),
     );
 
     for (var p in bill.items) {
@@ -147,9 +200,14 @@ class VendorBillByIdScreen extends StatelessWidget {
 
       for (int col = 0; col < rowData.length; col++) {
         sheetObject
-            .cell(excel_format.CellIndex.indexByColumnRow(
-            columnIndex: col, rowIndex: rowIndex))
-            .cellStyle = dataStyle;
+                .cell(
+                  excel_format.CellIndex.indexByColumnRow(
+                    columnIndex: col,
+                    rowIndex: rowIndex,
+                  ),
+                )
+                .cellStyle =
+            dataStyle;
         sheetObject.setColumnWidth(col, col == 0 ? 30.0 : 15.0);
       }
       rowIndex++;
@@ -160,7 +218,8 @@ class VendorBillByIdScreen extends StatelessWidget {
     // 4. الملخص المالي
     // **********************************
     excel_format.CellStyle summaryLabelStyle = excel_format.CellStyle(
-        bold: true);
+      bold: true,
+    );
     excel_format.CellStyle summaryValueStyle = excel_format.CellStyle(
       bold: true,
       numberFormat: excel_format.NumFormat.custom(formatCode: '#,##0.00'),
@@ -168,25 +227,50 @@ class VendorBillByIdScreen extends StatelessWidget {
     );
 
     void addSummaryRow(String label, double? value, {bool isTotal = false}) {
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0, rowIndex: rowIndex),
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 0,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 3,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
           excel_format.CellIndex.indexByColumnRow(
-              columnIndex: 3, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 0, rowIndex: rowIndex))
+            columnIndex: 0,
+            rowIndex: rowIndex,
+          ),
+        )
         ..value = excel_format.TextCellValue(label)
         ..cellStyle = summaryLabelStyle;
 
-      sheetObject.merge(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 4, rowIndex: rowIndex),
+      sheetObject.merge(
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: 4,
+          rowIndex: rowIndex,
+        ),
+        excel_format.CellIndex.indexByColumnRow(
+          columnIndex: maxCols - 1,
+          rowIndex: rowIndex,
+        ),
+      );
+      sheetObject.cell(
           excel_format.CellIndex.indexByColumnRow(
-              columnIndex: maxCols - 1, rowIndex: rowIndex));
-      sheetObject.cell(excel_format.CellIndex.indexByColumnRow(
-          columnIndex: 4, rowIndex: rowIndex))
+            columnIndex: 4,
+            rowIndex: rowIndex,
+          ),
+        )
         ..value = excel_format.TextCellValue(
-            "${value?.toStringAsFixed(2) ?? 0.00} EGP")
-        ..cellStyle = (isTotal ? summaryValueStyle : excel_format.CellStyle(
-            bold: true, horizontalAlign: excel_format.HorizontalAlign.Right));
+          "${value?.toStringAsFixed(2) ?? 0.00} EGP",
+        )
+        ..cellStyle = (isTotal
+            ? summaryValueStyle
+            : excel_format.CellStyle(
+                bold: true,
+                horizontalAlign: excel_format.HorizontalAlign.Right,
+              ));
 
       rowIndex++;
     }
@@ -198,14 +282,12 @@ class VendorBillByIdScreen extends StatelessWidget {
     addSummaryRow(tr('previous_debt'), bill.debtBefore);
     addSummaryRow(tr('current_debt'), bill.debtAfter);
 
-
     // **********************************
     // 5. الحفظ والمشاركة
     // **********************************
     try {
       final fileName =
-          'VendorBill_${bill.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(
-          DateTime.now())}.xlsx';
+          'VendorBill_${bill.id ?? "Unknown"}_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
 
       final FileSaveLocation? location = await getSaveLocation(
         suggestedName: fileName,
@@ -233,10 +315,9 @@ class VendorBillByIdScreen extends StatelessWidget {
         );
 
         // مشاركة الملف بعد الحفظ
-        await Share.shareXFiles(
-          [XFile(savedFile.path)],
-          text: tr("share_vendor_bill_message", args: [bill.id ?? '-']),
-        );
+        await Share.shareXFiles([
+          XFile(savedFile.path),
+        ], text: tr("share_vendor_bill_message", args: [bill.id ?? '-']));
       } else {
         throw Exception("Failed to generate Excel file bytes.");
       }
@@ -252,30 +333,44 @@ class VendorBillByIdScreen extends StatelessWidget {
     }
   }
 
-
-    @override
+  @override
   Widget build(BuildContext context) {
     context.read<VendorBillCubit>().fetchBillsById(billId);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("vendor_bill_details".tr(),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          "vendor_bill_details".tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
         actions: [
-          _buildExportButton(context), // 👈 زر التصدير
+          InkWell(child: Icon(Icons.edit_rounded, color: Colors.red),onTap: (){
+            Navigator.push(context, MaterialPageRoute(builder: (context) =>EditVendorInvoicePage(
+              invoiceId:billId,
+            ) ,));
+          },),
+
+          // 👈 زر التصدير
+          _buildExportButton(context),
+          // 👈 زر التصدير
         ],
       ),
       body: BlocBuilder<VendorBillCubit, VendorBillState>(
         builder: (context, state) {
           if (state is VendorBillLoading) {
-            return Center(child: CircularProgressIndicator(color: Colors.deepPurple));
+            return Center(
+              child: CircularProgressIndicator(color: Colors.deepPurple),
+            );
           }
 
           if (state is VendorBillError) {
             return Center(
-              child: Text(state.message, style: const TextStyle(color: Colors.red)),
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
+              ),
             );
           }
 
@@ -327,11 +422,11 @@ class VendorBillByIdScreen extends StatelessWidget {
           tooltip: tr("export_to_excel"),
           onPressed: canExport
               ? () {
-            final state = context.read<VendorBillCubit>().state;
-            if (state is VendorBillLoaded) {
-              _exportBillToExcel(context, state.bills.first);
-            }
-          }
+                  final state = context.read<VendorBillCubit>().state;
+                  if (state is VendorBillLoaded) {
+                    _exportBillToExcel(context, state.bills.first);
+                  }
+                }
               : null, // تعطيل الزر إذا لم تتوفر بيانات
         );
       },
@@ -393,19 +488,41 @@ class VendorBillByIdScreen extends StatelessWidget {
         child: DataTable(
           columnSpacing: 16,
           headingRowColor: MaterialStateColor.resolveWith(
-                (states) => Colors.deepPurple.shade50,
+            (states) => Colors.deepPurple.shade50,
           ),
           columns: [
-            DataColumn(label: Text("product".tr(), style: const TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text("qty".tr(), style: const TextStyle(fontWeight: FontWeight.bold))),
-            DataColumn(label: Text("price".tr(), style: const TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(
+              label: Text(
+                "product".tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                "qty".tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                "price".tr(),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
           rows: products.map((product) {
             return DataRow(
               cells: [
-                DataCell(Text(product.productName ?? "N/A", style: const TextStyle(fontWeight: FontWeight.w500))),
+                DataCell(
+                  Text(
+                    product.productName ?? "N/A",
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
                 DataCell(Center(child: Text("${product.qun ?? 0}"))),
-                DataCell(Text("${product.salePrice?.toStringAsFixed(2) ?? 0.00} EGP")),
+                DataCell(
+                  Text("${product.salePrice?.toStringAsFixed(2) ?? 0.00} EGP"),
+                ),
               ],
             );
           }).toList(),
@@ -422,32 +539,61 @@ class VendorBillByIdScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildInfoRow("total_before_discount".tr(), bill.totalBeforeDiscount, Colors.black87),
+            _buildInfoRow(
+              "total_before_discount".tr(),
+              bill.totalBeforeDiscount,
+              Colors.black87,
+            ),
             _buildInfoRow("discount".tr(), bill.discount, Colors.red),
             const Divider(height: 15),
-            _buildInfoRow("total_payable".tr(), bill.totalAfterDiscount, Colors.deepPurple.shade700, isTotal: true),
+            _buildInfoRow(
+              "total_payable".tr(),
+              bill.totalAfterDiscount,
+              Colors.deepPurple.shade700,
+              isTotal: true,
+            ),
             const Divider(height: 20, thickness: 1.5),
-            _buildInfoRow("previous_debt".tr(), bill.debtBefore, Colors.black54),
-            _buildInfoRow("current_debt".tr(), bill.debtAfter, Colors.blue.shade700),
+            _buildInfoRow(
+              "previous_debt".tr(),
+              bill.debtBefore,
+              Colors.black54,
+            ),
+            _buildInfoRow(
+              "current_debt".tr(),
+              bill.debtAfter,
+              Colors.blue.shade700,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoRowWithIcon(IconData icon, String label, String value, {Color color = Colors.black87}) {
+  Widget _buildInfoRowWithIcon(
+    IconData icon,
+    String label,
+    String value, {
+    Color color = Colors.black87,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Icon(icon, color: Colors.deepPurple, size: 20),
           const SizedBox(width: 10),
-          Text("$label: ", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          Text(
+            "$label: ",
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -455,14 +601,32 @@ class VendorBillByIdScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, double? value, Color valueColor, {bool isTotal = false}) {
+  Widget _buildInfoRow(
+    String label,
+    double? value,
+    Color valueColor, {
+    bool isTotal = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: isTotal ? 18 : 16, fontWeight: isTotal ? FontWeight.bold : FontWeight.normal)),
-          Text("${value?.toStringAsFixed(2) ?? 0.00} EGP", style: TextStyle(fontSize: isTotal ? 18 : 16, fontWeight: FontWeight.bold, color: valueColor)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "${value?.toStringAsFixed(2) ?? 0.00} EGP",
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+          ),
         ],
       ),
     );

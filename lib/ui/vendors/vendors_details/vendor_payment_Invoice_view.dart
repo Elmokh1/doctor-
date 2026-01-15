@@ -108,7 +108,7 @@ class VendorTransactionSummaryView extends StatelessWidget {
       List<excel_format.CellValue> rowData = [
         excel_format.TextCellValue(typeLabel),
         excel_format.TextCellValue(dateStr),
-        excel_format.TextCellValue(t.invoiceId ?? "-"),
+        excel_format.TextCellValue(t.invoiceNum ?? "-"),
         excel_format.TextCellValue(t.notes ?? "-"),
         excel_format.TextCellValue(debtAmount),
         excel_format.TextCellValue(creditAmount),
@@ -210,6 +210,7 @@ class VendorTransactionSummaryView extends StatelessWidget {
           backgroundColor: Colors.deepPurple,
           actions: [
             _buildExportButton(context, vendor.name ?? tr('vendor')), // 👈 زر التصدير
+
           ],
         ),
         body:
@@ -314,14 +315,14 @@ class VendorTransactionSummaryView extends StatelessWidget {
                                                 MaterialPageRoute(
                                                   builder: (_) =>
                                                       VendorBillByIdScreen(
-                                                        billId: t.invoiceId!,
+                                                        billId: t.invoiceNum!,
                                                       ),
                                                 ),
                                               );
                                             }
                                           },
                                           child: Text(
-                                            t.invoiceId ?? "-",
+                                            t.invoiceNum ?? "-",
                                             style: const TextStyle(
                                               color: Colors.blue,
                                               decoration:

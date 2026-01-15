@@ -17,6 +17,7 @@ class ProductTransactionCubit extends Cubit<ProductTransactionState> {
     required DateTime transactionDate,
     required String transactionNum,
     required bool isCustomer,
+    required String transactionId,
   }) async {
     emit(ProductTransactionLoading());
 
@@ -30,6 +31,7 @@ class ProductTransactionCubit extends Cubit<ProductTransactionState> {
           transactionNum: transactionNum,
           transactionDate: transactionDate,
           isCustomer: isCustomer,
+          invoiceId: transactionId,
         ),
       );
 
@@ -87,4 +89,32 @@ class ProductTransactionCubit extends Cubit<ProductTransactionState> {
       emit(ProductTransactionError("حدث خطأ أثناء حذف الحركة"));
     }
   }
+
+  Future<void> updateTransaction({
+    required String productId,
+    required String oldInvoiceId, // الـ invoiceId القديم لتحديث الحركات المرتبطة به
+    required int newQuantity,
+    required DateTime newDate,
+    required String newInvoiceId, // الـ invoiceId الجديد
+  }) async {
+    emit(ProductTransactionLoading());
+    try {
+      // تحديث الحركات المرتبطة بالـ invoiceId القديم
+      await MyDatabase.updateProductTransactionByInvoiceId(
+        productId: productId,
+        oldInvoiceId: oldInvoiceId,
+        newQuantity: newQuantity,
+        newDate: newDate,
+        newInvoiceId: newInvoiceId,
+      );
+
+      emit(ProductTransactionSuccess());
+
+      // إزالة استدعاء loadTransactions لتجنب إعادة تحميل البيانات بعد التحديث، خاصة إذا كانت الصفحة مغلقة
+      // loadTransactions(productId); // تم تعطيله لتجنب الخطأ "Cannot emit new states after calling close"
+    } catch (e) {
+      emit(ProductTransactionError("حدث خطأ أثناء تحديث الحركة"));
+    }
+  }
 }
+

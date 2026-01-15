@@ -91,9 +91,9 @@ class _ReceivedPaymentInvoiceScreenState
       final currentCounter = await counterCubit.getCounter();
       final newCounter = currentCounter + 1;
 
-      // إضافة الفاتورة
-      await invoiceCubit.addReceivedPaymentInvoice(
-        id: newCounter.toString(),
+      // 🔹 حفظ الفاتورة واسترجاع الـ Firestore ID
+      final String firestoreId = await invoiceCubit.addReceivedPaymentInvoice(
+        invoiceNum: newCounter.toString(), // يفضل يكون زي ما هو
         customerName: selectedCustomerName!,
         customerId: selectedCustomerId!,
         amount: amount,
@@ -114,10 +114,11 @@ class _ReceivedPaymentInvoiceScreenState
         newBalance: newBalance,
       );
 
-      // 🔹 إضافة حركة للـ CustomerTransactionSummary
+      // 🔹 إضافة حركة للـ CustomerTransactionSummary باستخدام الـ Firestore ID فقط
       await transactionCubit.addTransaction(
         CustomerTransactionSummaryModel(
-          invoiceId: newCounter.toString(),
+          invoiceId: firestoreId, // <--- Firestore ID
+          invoiceNum: newCounter.toString(), // <--- رقم الفاتورة زي ما هو
           customerId: selectedCustomerId!,
           customerName: selectedCustomerName!,
           amount: amount,
@@ -125,7 +126,7 @@ class _ReceivedPaymentInvoiceScreenState
           debtAfter: newBalance,
           notes: details,
           dateTime: selectedDate,
-          transactionType: "تحصيل", // ممكن تستخدم أي تسمية
+          transactionType: "تحصيل",
         ),
       );
     }
