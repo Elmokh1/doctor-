@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'movie-2493b.firebaseapp.com',
     storageBucket: 'movie-2493b.firebasestorage.app',
   );
+
 }
