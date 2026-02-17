@@ -8,10 +8,12 @@ import '../../../cubits/cash_box_cubit/cash_box_state.dart';
 import '../../../cubits/customer_cubit/customer_cubit.dart';
 import '../../../cubits/customer_cubit/customer_state.dart';
 import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_summury_cubit.dart';
+import '../../../cubits/money_transaction_cubit/money_transaction_cubit.dart';
 import '../../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_cubit.dart';
 import '../../../cubits/recieved_payment_invoice_cubit/received_payment_invoice_state.dart';
 import '../../../data/model/customer_model.dart';
 import '../../../data/model/customer_transaction_summary_model.dart';
+import '../../../data/my_dataBase.dart';
 import '../../../utils/amount_input.dart';
 import '../../../utils/data_picker_field.dart';
 import '../../../utils/details_input.dart';
@@ -56,6 +58,7 @@ class _ReceivedPaymentInvoiceScreenState
     final customerCubit = context.read<CustomerCubit>();
     final counterCubit = context.read<InvoiceCounterCubit>();
     final transactionCubit = context.read<CustomerTransactionSummaryCubit>();
+    final moneyTransactionCubit = context.read<MoneyTransactionCubit>();
 
     final amount = double.tryParse(amountController.text) ?? 0;
     final details = detailsController.text;
@@ -63,9 +66,9 @@ class _ReceivedPaymentInvoiceScreenState
     if (selectedCustomerId == null ||
         selectedCustomerName == null ||
         amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr("fill_all_fields"))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(tr("fill_all_fields"))));
       return;
     }
 
@@ -77,7 +80,7 @@ class _ReceivedPaymentInvoiceScreenState
     if (customerCubit.state is CustomerLoaded) {
       final customerState = customerCubit.state as CustomerLoaded;
       final currentCustomer = customerState.customers.firstWhere(
-            (c) => c.id == selectedCustomerId,
+        (c) => c.id == selectedCustomerId,
         orElse: () => CustomerModel(
           id: selectedCustomerId,
           name: selectedCustomerName,
@@ -91,9 +94,9 @@ class _ReceivedPaymentInvoiceScreenState
       final currentCounter = await counterCubit.getCounter();
       final newCounter = currentCounter + 1;
 
-      // 🔹 حفظ الفاتورة واسترجاع الـ Firestore ID
+      /// 1️⃣ حفظ الفاتورة
       final String firestoreId = await invoiceCubit.addReceivedPaymentInvoice(
-        invoiceNum: newCounter.toString(), // يفضل يكون زي ما هو
+        invoiceNum: newCounter.toString(),
         customerName: selectedCustomerName!,
         customerId: selectedCustomerId!,
         amount: amount,
@@ -105,20 +108,20 @@ class _ReceivedPaymentInvoiceScreenState
         transactionDate: selectedDate,
       );
 
-      // تحديث الكاش بوكس
+      /// 2️⃣ تحديث الكاش بوكس (مرة واحدة)
       await cashCubit.updateCash(amount, isIncome: true);
 
-      // تحديث رصيد العميل
+      /// 3️⃣ تحديث رصيد العميل
       await customerCubit.updateCustomerBalance(
         customerId: selectedCustomerId!,
         newBalance: newBalance,
       );
 
-      // 🔹 إضافة حركة للـ CustomerTransactionSummary باستخدام الـ Firestore ID فقط
+      /// 4️⃣ سجل حركة العميل
       await transactionCubit.addTransaction(
         CustomerTransactionSummaryModel(
-          invoiceId: firestoreId, // <--- Firestore ID
-          invoiceNum: newCounter.toString(), // <--- رقم الفاتورة زي ما هو
+          invoiceId: firestoreId,
+          invoiceNum: newCounter.toString(),
           customerId: selectedCustomerId!,
           customerName: selectedCustomerName!,
           amount: amount,
@@ -129,17 +132,30 @@ class _ReceivedPaymentInvoiceScreenState
           transactionType: "تحصيل",
         ),
       );
+
+      /// 5️⃣ 🔥 سكشن "تحصيل من عميل"
+      final section = await MyDatabase.getOrCreateCustomerPaymentSection();
+
+      /// 6️⃣ 🔥 MoneyTransaction (Log فقط)
+      await moneyTransactionCubit.addMoneyTransaction(
+        selectedCustomerName!,
+        section,
+        true,
+        // isIncome
+        amount,
+        cashBoxBefore,
+        cashBoxAfter,
+        'تم التحصيل من $selectedCustomerName',
+        selectedDate,
+      );
     }
 
     await counterCubit.updateCounter();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(tr("invoice_saved_successfully")),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(tr("invoice_saved_successfully"))));
 
-    // تنظيف الحقول
     amountController.clear();
     detailsController.clear();
     setState(() {
@@ -155,47 +171,51 @@ class _ReceivedPaymentInvoiceScreenState
         title: Text(tr("received_payment_invoice")),
         centerTitle: true,
       ),
-      body: BlocConsumer<ReceivedPaymentInvoiceCubit,
-          ReceivedPaymentInvoiceState>(
-        listener: (context, state) {
-          if (state is ReceivedPaymentInvoiceError) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(state.message)));
-          }
-        },
-        builder: (context, state) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: ListView(
-              children: [
-                CustomerDropdown(
-                  selectedCustomerId: selectedCustomerId,
-                  onCustomerSelected: (id, name) {
-                    setState(() {
-                      selectedCustomerId = id;
-                      selectedCustomerName = name;
-                    });
-                  },
+      body:
+          BlocConsumer<
+            ReceivedPaymentInvoiceCubit,
+            ReceivedPaymentInvoiceState
+          >(
+            listener: (context, state) {
+              if (state is ReceivedPaymentInvoiceError) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.message)));
+              }
+            },
+            builder: (context, state) {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: ListView(
+                  children: [
+                    CustomerDropdown(
+                      selectedCustomerId: selectedCustomerId,
+                      onCustomerSelected: (id, name) {
+                        setState(() {
+                          selectedCustomerId = id;
+                          selectedCustomerName = name;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    AmountInput(controller: amountController),
+                    const SizedBox(height: 16),
+                    DetailsInput(controller: detailsController),
+                    const SizedBox(height: 16),
+                    DatePickerField(
+                      selectedDate: selectedDate,
+                      onPickDate: pickDate,
+                    ),
+                    const SizedBox(height: 24),
+                    SaveButton(
+                      isLoading: state is ReceivedPaymentInvoiceLoading,
+                      onPressed: saveInvoice,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                AmountInput(controller: amountController),
-                const SizedBox(height: 16),
-                DetailsInput(controller: detailsController),
-                const SizedBox(height: 16),
-                DatePickerField(
-                  selectedDate: selectedDate,
-                  onPickDate: pickDate,
-                ),
-                const SizedBox(height: 24),
-                SaveButton(
-                  isLoading: state is ReceivedPaymentInvoiceLoading,
-                  onPressed: saveInvoice,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 }

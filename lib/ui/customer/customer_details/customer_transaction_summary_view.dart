@@ -14,26 +14,33 @@ import '../../../cubits/customer_transaction_summury_cubit/customer_transaction_
 import '../../../data/model/customer_model.dart';
 import 'invoice_preview/invoice_preview.dart';
 
-class CustomerTransactionSummaryView extends StatelessWidget {
+enum TransactionFilter { all, payment, sales, refund }
+
+class CustomerTransactionSummaryView extends StatefulWidget {
   final CustomerModel customer;
 
-  const CustomerTransactionSummaryView({
-    super.key,
-    required this.customer,
-  });
+  const CustomerTransactionSummaryView({super.key, required this.customer});
+
+  @override
+  State<CustomerTransactionSummaryView> createState() =>
+      _CustomerTransactionSummaryViewState();
+}
+
+class _CustomerTransactionSummaryViewState
+    extends State<CustomerTransactionSummaryView> {
+  TransactionFilter _filter = TransactionFilter.all;
 
   // ======================= Excel Export =======================
   void _exportToExcel(BuildContext context, List<dynamic> transactions) async {
     if (transactions.isEmpty) return;
 
-    // ترتيب من الأقدم للأحدث
     final sortedData = List.from(transactions)
       ..sort((a, b) => a.dateTime!.compareTo(b.dateTime!));
 
-    double runningBalance = 0; // 🔴 من الصفر فقط
+    double runningBalance = 0;
 
     final excel = Excel.createExcel();
-    final sheet = excel[customer.name ?? "Transactions"];
+    final sheet = excel[widget.customer.name ?? "Transactions"];
 
     final headers = [
       tr("type"),
@@ -52,40 +59,24 @@ class CustomerTransactionSummaryView extends StatelessWidget {
     for (var t in sortedData) {
       if (t.transactionType == 'مبيعات') {
         runningBalance += t.amount ?? 0;
-      } else if (t.transactionType == 'تحصيل' ||
-          t.transactionType == 'مرتجع') {
+      } else {
         runningBalance -= t.amount ?? 0;
       }
 
       sheet.appendRow([
-        TextCellValue(
-          t.transactionType == 'مبيعات'
-              ? tr("invoice")
-              : t.transactionType == 'تحصيل'
-              ? tr("payment")
-              : tr("credit_transaction"),
-        ),
-        TextCellValue(
-            t.dateTime != null ? dateFormat.format(t.dateTime!) : '--'),
+        TextCellValue(t.transactionType),
+        TextCellValue(dateFormat.format(t.dateTime!)),
         TextCellValue(t.invoiceNum ?? '-'),
         TextCellValue(t.notes ?? '-'),
-        TextCellValue(
-            t.transactionType == 'مبيعات'
-                ? (t.amount ?? 0).toStringAsFixed(2)
-                : ''),
-        TextCellValue(
-            t.transactionType != 'مبيعات'
-                ? (t.amount ?? 0).toStringAsFixed(2)
-                : ''),
-        TextCellValue(runningBalance.toStringAsFixed(2)),
+        TextCellValue(t.transactionType == 'مبيعات' ? t.amount.toString() : ''),
+        TextCellValue(t.transactionType != 'مبيعات' ? t.amount.toString() : ''),
+        TextCellValue(runningBalance.toString()),
       ]);
     }
 
-    final fileName =
-        '${customer.name}_Transactions_${DateFormat('yyyyMMdd').format(DateTime.now())}.xlsx';
-
     final location = await getSaveLocation(
-      suggestedName: fileName,
+      suggestedName:
+          '${widget.customer.name}_transactions_${DateTime.now().millisecondsSinceEpoch}.xlsx',
       acceptedTypeGroups: [
         XTypeGroup(label: 'Excel', extensions: ['xlsx']),
       ],
@@ -97,10 +88,26 @@ class CustomerTransactionSummaryView extends StatelessWidget {
     if (bytes != null) {
       final file = File(location.path);
       await file.writeAsBytes(bytes);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الملف بنجاح')),
-      );
     }
+  }
+
+  // ======================= Filter Logic =======================
+  List<dynamic> _applyFilter(List<dynamic> data) {
+    switch (_filter) {
+      case TransactionFilter.payment:
+        return data.where((e) => e.transactionType == 'تحصيل').toList();
+      case TransactionFilter.sales:
+        return data.where((e) => e.transactionType == 'مبيعات').toList();
+      case TransactionFilter.refund:
+        return data.where((e) => e.transactionType == 'مرتجع').toList();
+      case TransactionFilter.all:
+      default:
+        return data;
+    }
+  }
+
+  double _calculateTotal(List<dynamic> data) {
+    return data.fold(0.0, (sum, item) => sum + (item.amount ?? 0));
   }
 
   // ======================= UI =======================
@@ -110,22 +117,26 @@ class CustomerTransactionSummaryView extends StatelessWidget {
 
     return BlocProvider(
       create: (_) =>
-      CustomerTransactionSummaryCubit()..getTransactions(customer.id!),
+          CustomerTransactionSummaryCubit()
+            ..getTransactions(widget.customer.id!),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(customer.name ?? ""),
+          title: Text(widget.customer.name ?? ""),
           centerTitle: true,
-          backgroundColor: Colors.blueAccent,
           actions: [
-            BlocBuilder<CustomerTransactionSummaryCubit,
-                CustomerTransactionSummaryState>(
+            BlocBuilder<
+              CustomerTransactionSummaryCubit,
+              CustomerTransactionSummaryState
+            >(
               builder: (context, state) {
-                if (state is CustomerTransactionSummaryLoaded &&
-                    state.transactions.isNotEmpty) {
+                if (state is CustomerTransactionSummaryLoaded) {
+                  // نطبق الفلتر قبل التصدير
+                  final filteredData = _applyFilter(state.transactions);
+
                   return IconButton(
                     icon: const Icon(Icons.file_download),
-                    onPressed: () =>
-                        _exportToExcel(context, state.transactions),
+                    tooltip: tr("export_to_excel"),
+                    onPressed: () => _exportToExcel(context, filteredData),
                   );
                 }
                 return const SizedBox();
@@ -133,117 +144,137 @@ class CustomerTransactionSummaryView extends StatelessWidget {
             ),
           ],
         ),
-        body: BlocBuilder<CustomerTransactionSummaryCubit,
-            CustomerTransactionSummaryState>(
-          builder: (context, state) {
-            if (state is CustomerTransactionSummaryLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body:
+            BlocBuilder<
+              CustomerTransactionSummaryCubit,
+              CustomerTransactionSummaryState
+            >(
+              builder: (context, state) {
+                if (state is CustomerTransactionSummaryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (state is CustomerTransactionSummaryError) {
-              return Center(child: Text(state.message));
-            }
+                if (state is CustomerTransactionSummaryLoaded) {
+                  final filteredData = _applyFilter(state.transactions);
+                  final totalAmount = _calculateTotal(filteredData);
 
-            if (state is CustomerTransactionSummaryLoaded) {
-              if (state.transactions.isEmpty) {
-                return Center(child: Text(tr("no_transactions")));
-              }
+                  double runningBalance = 0;
 
-              final sortedData = List.from(state.transactions)
-                ..sort((a, b) => a.dateTime!.compareTo(b.dateTime!));
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ================= Radio Buttons =================
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Wrap(
+                          spacing: 12,
+                          children: [
+                            _buildRadio(TransactionFilter.all, tr("all")),
+                            _buildRadio(
+                              TransactionFilter.payment,
+                              tr("payment"),
+                            ),
+                            _buildRadio(TransactionFilter.sales, tr("invoice")),
+                            _buildRadio(
+                              TransactionFilter.refund,
+                              tr("credit_transaction"),
+                            ),
+                          ],
+                        ),
+                      ),
 
-              double runningBalance = 0; // 🔴 من الصفر فقط
+                      // ================= Table =================
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Directionality(
+                              textDirection: ui.TextDirection.ltr,
+                              child: DataTable(
+                                border: TableBorder.all(color: Colors.black12),
+                                columns: [
+                                  DataColumn(label: Text(tr("type"))),
+                                  DataColumn(label: Text(tr("date"))),
+                                  DataColumn(label: Text(tr("number"))),
+                                  DataColumn(label: Text(tr("memo"))),
+                                  DataColumn(label: Text(tr("amount"))),
+                                  DataColumn(label: Text(tr("balance"))),
+                                ],
+                                rows: filteredData.map((t) {
+                                  if (t.transactionType == 'مبيعات') {
+                                    runningBalance += t.amount ?? 0;
+                                  } else {
+                                    runningBalance -= t.amount ?? 0;
+                                  }
 
-              return Directionality(
-                textDirection: ui.TextDirection.ltr,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor:
-                    MaterialStateProperty.all(Colors.blue.shade50),
-                    border: TableBorder.all(color: Colors.black12),
-                    columns: [
-                      DataColumn(label: Text(tr("type"))),
-                      DataColumn(label: Text(tr("date"))),
-                      DataColumn(label: Text(tr("number"))),
-                      DataColumn(label: Text(tr("memo"))),
-                      DataColumn(label: Text(tr("debt"))),
-                      DataColumn(label: Text(tr("credit"))),
-                      DataColumn(label: Text(tr("balance"))),
-                    ],
-                    rows: sortedData.map((t) {
-                      if (t.transactionType == 'مبيعات') {
-                        runningBalance += t.amount ?? 0;
-                      } else if (t.transactionType == 'تحصيل' ||
-                          t.transactionType == 'مرتجع') {
-                        runningBalance -= t.amount ?? 0;
-                      }
-
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(
-                            t.transactionType == 'مبيعات'
-                                ? tr("invoice")
-                                : t.transactionType == 'تحصيل'
-                                ? tr("payment")
-                                : tr("credit_transaction"),
-                          )),
-                          DataCell(Text(
-                            t.dateTime != null
-                                ? dateFormat.format(t.dateTime!)
-                                : '--',
-                          )),
-                          DataCell(
-                            InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) {
-                                      if (t.transactionType == "تحصيل") {
-                                        return ReceivePaymentByIdScreen(
-                                          paymentId: t.invoiceNum!,
-                                          customerId: t.customerId!,
-                                        );
-                                      }
-                                      return CustomerInvoiceByIdScreen(
-                                        invoiceId: t.invoiceNum!,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                              child: Text(t.invoiceNum ?? "-"),
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(Text(t.transactionType)),
+                                      DataCell(
+                                        Text(
+                                          dateFormat.format(
+                                            t.dateTime ?? DateTime.now(),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(Text(t.invoiceNum ?? "-")),
+                                      DataCell(Text(t.notes ?? "-")),
+                                      DataCell(
+                                        Text(
+                                          t.amount?.toStringAsFixed(2) ?? "0",
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(runningBalance.toStringAsFixed(2)),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
-                          DataCell(Text(t.notes ?? "-")),
-                          DataCell(
-                            t.transactionType == 'مبيعات'
-                                ? Text(
-                                t.amount?.toStringAsFixed(2) ?? '0')
-                                : const Text(""),
-                          ),
-                          DataCell(
-                            t.transactionType != 'مبيعات'
-                                ? Text(
-                                t.amount?.toStringAsFixed(2) ?? '0')
-                                : const Text(""),
-                          ),
-                          DataCell(
-                            Text(runningBalance.toStringAsFixed(2)),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              );
-            }
+                        ),
+                      ),
 
-            return const SizedBox();
+                      // ================= Total =================
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.grey.shade200,
+                        width: double.infinity,
+                        child: Text(
+                          "${tr("total")} : ${totalAmount.toStringAsFixed(2)}",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return const SizedBox();
+              },
+            ),
+      ),
+    );
+  }
+
+  Widget _buildRadio(TransactionFilter value, String title) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Radio<TransactionFilter>(
+          value: value,
+          groupValue: _filter,
+          onChanged: (v) {
+            setState(() => _filter = v!);
           },
         ),
-      ),
+        Text(title),
+      ],
     );
   }
 }

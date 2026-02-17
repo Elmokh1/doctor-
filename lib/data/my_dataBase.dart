@@ -75,6 +75,56 @@ class MyDatabase {
         .where("id", isEqualTo: sectionId)
         .snapshots();
   }
+  static Future<SectionsModel> getOrCreateVendorPaymentSection() async {
+    final collection = getSectionsCollection();
+
+    final query = await collection
+        .where('name', isEqualTo: 'دفع إلى المورد')
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      // ✔ السكشن موجود
+      return query.docs.first.data();
+    } else {
+      // ✔ إنشاء سكشن جديد
+      final docRef = collection.doc();
+
+      final section = SectionsModel(
+        id: docRef.id,
+        name: 'دفع إلى المورد',
+        isIncome: false,
+      );
+
+      await docRef.set(section);
+      return section;
+    }
+  }
+  static Future<SectionsModel> getOrCreateCustomerPaymentSection() async {
+    final collection = getSectionsCollection();
+
+    final query = await collection
+        .where('name', isEqualTo: 'تحصيل من عميل')
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      // ✔ السكشن موجود
+      return query.docs.first.data();
+    } else {
+      // ✔ إنشاء سكشن جديد
+      final docRef = collection.doc();
+
+      final section = SectionsModel(
+        id: docRef.id,
+        name: 'تحصيل من عميل',
+        isIncome: true,
+      );
+
+      await docRef.set(section);
+      return section;
+    }
+  }
 
   // CashBox
   static CollectionReference<CashBoxModel> getCashBoxCollection() {

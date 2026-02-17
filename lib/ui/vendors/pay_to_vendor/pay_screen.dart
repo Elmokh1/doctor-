@@ -7,12 +7,14 @@ import 'package:easy_localization/easy_localization.dart';
 
 import '../../../cubits/cash_box_cubit/cash_box_cubit.dart';
 import '../../../cubits/cash_box_cubit/cash_box_state.dart';
+import '../../../cubits/money_transaction_cubit/money_transaction_cubit.dart';
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_cubit.dart';
 import '../../../cubits/pay_vendor_invoice_cubit/pay_vendor_invoice_state.dart';
 import '../../../cubits/vendor_pay_counter/vendor_pay_counter_cubit.dart';
 import '../../../cubits/vendors_cubit/vendor_cubit.dart';
 import '../../../cubits/vendors_cubit/vendor_state.dart';
 import '../../../data/model/vendor_model.dart';
+import '../../../data/my_dataBase.dart';
 import '../../../utils/amount_input.dart';
 import '../../../utils/data_picker_field.dart';
 import '../../../utils/details_input.dart';
@@ -54,6 +56,7 @@ class _PayVendorInvoiceScreenState extends State<PayVendorInvoiceScreen> {
     final vendorCubit = context.read<VendorCubit>();
     final counterCubit = context.read<VendorPayCounterCubit>();
     final transactionCubit = context.read<VendorTransactionSummaryCubit>();
+    final moneyTransactionCubit = context.read<MoneyTransactionCubit>();
 
     final amount = double.tryParse(amountController.text) ?? 0;
     final details = detailsController.text;
@@ -88,6 +91,7 @@ class _PayVendorInvoiceScreenState extends State<PayVendorInvoiceScreen> {
       final currentCounter = await counterCubit.getCounter();
       final newCounter = currentCounter + 1;
 
+      /// 1️⃣ حفظ فاتورة دفع المورد
       await invoiceCubit.addPayVendorInvoice(
         id: newCounter.toString(),
         vendorName: selectedVendorName!,
@@ -101,17 +105,21 @@ class _PayVendorInvoiceScreenState extends State<PayVendorInvoiceScreen> {
         transactionDate: selectedDate,
       );
 
+      /// 2️⃣ تحديث الكاش بوكس (مرة واحدة بس)
       await cashCubit.updateCash(amount, isIncome: false);
+
+      /// 3️⃣ تحديث رصيد المورد
       await vendorCubit.updateVendorBalance(
         vendorId: selectedVendorId!,
         newBalance: newBalance,
       );
 
+      /// 4️⃣ سجل حركة المورد
       await transactionCubit.addTransaction(
         VendorTransactionSummaryModel(
           invoiceId: newCounter.toString(),
           vendorId: selectedVendorId!,
-          vendorName:selectedVendorName!,
+          vendorName: selectedVendorName!,
           amount: amount,
           debtBefore: oldBalance,
           debtAfter: newBalance,
@@ -121,13 +129,28 @@ class _PayVendorInvoiceScreenState extends State<PayVendorInvoiceScreen> {
         ),
       );
 
+      /// 5️⃣ 🔥 الحصول على سكشن "دفع إلى المورد" أو إنشاؤه
+      final section =
+      await MyDatabase.getOrCreateVendorPaymentSection();
+
+      /// 6️⃣ 🔥 تسجيل MoneyTransaction (Log فقط)
+      await moneyTransactionCubit.addMoneyTransaction(
+        selectedVendorName!,
+        section,
+        false, // isIncome = false
+        amount,
+        cashBoxBefore,
+        cashBoxAfter,
+        'تم الدفع إلى $selectedVendorName',
+        selectedDate,
+      );
+
+      /// 7️⃣ تحديث العداد
       await counterCubit.updateCounter();
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("invoice_saved_success".tr()),
-      ),
+      SnackBar(content: Text("invoice_saved_success".tr())),
     );
 
     amountController.clear();
