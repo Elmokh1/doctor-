@@ -218,102 +218,100 @@ class _VendorTransactionSummaryViewState
                   ),
 
                   // ================= TABLE =================
+// ================= TABLE =================
                   Expanded(
                     child: Directionality(
                       textDirection: ui.TextDirection.ltr,
                       child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: MaterialStateProperty.all(
-                            Colors.deepPurple.shade50,
-                          ),
-                          border: TableBorder.all(color: Colors.black12),
-                          columns: [
-                            DataColumn(label: Text('type'.tr())),
-                            DataColumn(label: Text('date'.tr())),
-                            DataColumn(label: Text('num'.tr())),
-                            DataColumn(label: Text('memo'.tr())),
-                            DataColumn(label: Text('debt'.tr())),
-                            DataColumn(label: Text('credit'.tr())),
-                            DataColumn(label: Text('balance'.tr())),
-                          ],
-                          rows: filtered.map((t) {
-                            if (t.transactionType == 'شراء') {
-                              runningBalance += t.amount ?? 0;
-                            } else if (t.transactionType == 'دفع' ||
-                                t.transactionType == 'مرتجع') {
-                              runningBalance -= t.amount ?? 0;
-                            }
+                        scrollDirection: Axis.vertical, // 👈 اسكرول رأسي
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal, // 👈 اسكرول أفقي
+                          child: DataTable(
+                            headingRowColor: MaterialStateProperty.all(
+                              Colors.deepPurple.shade50,
+                            ),
+                            border: TableBorder.all(color: Colors.black12),
+                            columns: [
+                              DataColumn(label: Text('type'.tr())),
+                              DataColumn(label: Text('date'.tr())),
+                              DataColumn(label: Text('num'.tr())),
+                              DataColumn(label: Text('memo'.tr())),
+                              DataColumn(label: Text('debt'.tr())),
+                              DataColumn(label: Text('credit'.tr())),
+                              DataColumn(label: Text('balance'.tr())),
+                            ],
+                            rows: filtered.map((t) {
+                              if (t.transactionType == 'شراء') {
+                                runningBalance += t.amount ?? 0;
+                              } else {
+                                runningBalance -= t.amount ?? 0;
+                              }
 
-                            return DataRow(cells: [
-                              DataCell(Text(
-                                t.transactionType == 'شراء'
-                                    ? 'invoice'.tr()
-                                    : t.transactionType == 'دفع'
-                                    ? 'payment'.tr()
-                                    : 'credit'.tr(),
-                              )),
-                              DataCell(Text(
-                                t.dateTime != null
-                                    ? dateFormat.format(t.dateTime!)
-                                    : '--',
-                              )),
-                              DataCell(
-                                InkWell(
-                                  onTap: () {
-                                    if (t.transactionType == "دفع") {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PaymentToVendor(
-                                            vendorId: t.vendorId!,
-                                            paymentId: t.invoiceId!,
+                              return DataRow(cells: [
+                                DataCell(Text(
+                                  t.transactionType == 'شراء'
+                                      ? 'invoice'.tr()
+                                      : t.transactionType == 'دفع'
+                                      ? 'payment'.tr()
+                                      : 'credit'.tr(),
+                                )),
+                                DataCell(Text(
+                                  t.dateTime != null
+                                      ? dateFormat.format(t.dateTime!)
+                                      : '--',
+                                )),
+                                DataCell(
+                                  InkWell(
+                                    onTap: () {
+                                      if (t.transactionType == "دفع") {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => PaymentToVendor(
+                                              vendorId: t.vendorId!,
+                                              paymentId: t.invoiceId!,
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    } else {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              VendorBillByIdScreen(
-                                                billId: t.invoiceNum!,
-                                              ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  child: Text(
-                                    t.invoiceNum ?? "-",
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      decoration: TextDecoration.underline,
+                                        );
+                                      } else {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => VendorBillByIdScreen(
+                                              billId: t.invoiceNum!,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Text(
+                                      t.invoiceNum ?? "-",
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              DataCell(Text(t.notes ?? "-")),
-                              DataCell(
-                                t.transactionType == 'شراء'
-                                    ? Text(
-                                    t.amount?.toStringAsFixed(2) ?? '0')
-                                    : const Text(""),
-                              ),
-                              DataCell(
-                                t.transactionType != 'شراء'
-                                    ? Text(
-                                    t.amount?.toStringAsFixed(2) ?? '0')
-                                    : const Text(""),
-                              ),
-                              DataCell(
-                                  Text(runningBalance.toStringAsFixed(2))),
-                            ]);
-                          }).toList(),
+                                DataCell(Text(t.notes ?? "-")),
+                                DataCell(
+                                  t.transactionType == 'شراء'
+                                      ? Text(t.amount?.toStringAsFixed(2) ?? '0')
+                                      : const Text(""),
+                                ),
+                                DataCell(
+                                  t.transactionType != 'شراء'
+                                      ? Text(t.amount?.toStringAsFixed(2) ?? '0')
+                                      : const Text(""),
+                                ),
+                                DataCell(Text(runningBalance.toStringAsFixed(2))),
+                              ]);
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
                   ),
-
                   // ================= TOTAL =================
                   Container(
                     width: double.infinity,

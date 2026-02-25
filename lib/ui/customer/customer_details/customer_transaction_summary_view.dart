@@ -28,7 +28,21 @@ class CustomerTransactionSummaryView extends StatefulWidget {
 
 class _CustomerTransactionSummaryViewState
     extends State<CustomerTransactionSummaryView> {
+  late final CustomerTransactionSummaryCubit _cubit;
   TransactionFilter _filter = TransactionFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = CustomerTransactionSummaryCubit()
+      ..getTransactions(widget.customer.id!);
+  }
+
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
 
   // ======================= Excel Export =======================
   void _exportToExcel(BuildContext context, List<dynamic> transactions) async {
@@ -76,7 +90,7 @@ class _CustomerTransactionSummaryViewState
 
     final location = await getSaveLocation(
       suggestedName:
-          '${widget.customer.name}_transactions_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+      '${widget.customer.name}_transactions_${DateTime.now().millisecondsSinceEpoch}.xlsx',
       acceptedTypeGroups: [
         XTypeGroup(label: 'Excel', extensions: ['xlsx']),
       ],
@@ -115,24 +129,18 @@ class _CustomerTransactionSummaryViewState
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('dd/MM/yyyy');
 
-    return BlocProvider(
-      create: (_) =>
-          CustomerTransactionSummaryCubit()
-            ..getTransactions(widget.customer.id!),
+    return BlocProvider.value(
+      value: _cubit,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.customer.name ?? ""),
           centerTitle: true,
           actions: [
-            BlocBuilder<
-              CustomerTransactionSummaryCubit,
-              CustomerTransactionSummaryState
-            >(
+            BlocBuilder<CustomerTransactionSummaryCubit,
+                CustomerTransactionSummaryState>(
               builder: (context, state) {
                 if (state is CustomerTransactionSummaryLoaded) {
-                  // نطبق الفلتر قبل التصدير
                   final filteredData = _applyFilter(state.transactions);
-
                   return IconButton(
                     icon: const Icon(Icons.file_download),
                     tooltip: tr("export_to_excel"),
@@ -144,120 +152,133 @@ class _CustomerTransactionSummaryViewState
             ),
           ],
         ),
-        body:
-            BlocBuilder<
-              CustomerTransactionSummaryCubit,
-              CustomerTransactionSummaryState
-            >(
-              builder: (context, state) {
-                if (state is CustomerTransactionSummaryLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        body: BlocBuilder<CustomerTransactionSummaryCubit,
+            CustomerTransactionSummaryState>(
+          builder: (context, state) {
+            if (state is CustomerTransactionSummaryLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                if (state is CustomerTransactionSummaryLoaded) {
-                  final filteredData = _applyFilter(state.transactions);
-                  final totalAmount = _calculateTotal(filteredData);
+            if (state is CustomerTransactionSummaryLoaded) {
+              final filteredData = _applyFilter(state.transactions);
+              final totalAmount = _calculateTotal(filteredData);
 
-                  double runningBalance = 0;
+              double runningBalance = 0;
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // ================= Radio Buttons =================
-                      Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Wrap(
-                          spacing: 12,
-                          children: [
-                            _buildRadio(TransactionFilter.all, tr("all")),
-                            _buildRadio(
-                              TransactionFilter.payment,
-                              tr("payment"),
-                            ),
-                            _buildRadio(TransactionFilter.sales, tr("invoice")),
-                            _buildRadio(
-                              TransactionFilter.refund,
-                              tr("credit_transaction"),
-                            ),
-                          ],
-                        ),
-                      ),
+              return Column(
+                children: [
+                  // ================= Filters =================
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Wrap(
+                      spacing: 12,
+                      children: [
+                        _buildRadio(TransactionFilter.all, tr("all")),
+                        _buildRadio(TransactionFilter.payment, tr("payment")),
+                        _buildRadio(TransactionFilter.sales, tr("invoice")),
+                        _buildRadio(
+                            TransactionFilter.refund, tr("credit_transaction")),
+                      ],
+                    ),
+                  ),
 
-                      // ================= Table =================
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Directionality(
-                              textDirection: ui.TextDirection.ltr,
-                              child: DataTable(
-                                border: TableBorder.all(color: Colors.black12),
-                                columns: [
-                                  DataColumn(label: Text(tr("type"))),
-                                  DataColumn(label: Text(tr("date"))),
-                                  DataColumn(label: Text(tr("number"))),
-                                  DataColumn(label: Text(tr("memo"))),
-                                  DataColumn(label: Text(tr("amount"))),
-                                  DataColumn(label: Text(tr("balance"))),
+                  // ================= Table =================
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Directionality(
+                          textDirection: ui.TextDirection.ltr,
+                          child: DataTable(
+                            border:
+                            TableBorder.all(color: Colors.black12),
+                            columns: [
+                              DataColumn(label: Text(tr("type"))),
+                              DataColumn(label: Text(tr("date"))),
+                              DataColumn(label: Text(tr("number"))),
+                              DataColumn(label: Text(tr("memo"))),
+                              DataColumn(label: Text(tr("amount"))),
+                              DataColumn(label: Text(tr("balance"))),
+                            ],
+                            rows: filteredData.map((t) {
+                              if (t.transactionType == 'مبيعات') {
+                                runningBalance += t.amount ?? 0;
+                              } else {
+                                runningBalance -= t.amount ?? 0;
+                              }
+
+                              return DataRow(
+                                cells: [
+                                  DataCell(Text(t.transactionType)),
+                                  DataCell(Text(
+                                    dateFormat.format(
+                                        t.dateTime ?? DateTime.now()),
+                                  )),
+                                  DataCell(
+                                    InkWell(
+                                      child: Text(t.invoiceNum ?? "-"),
+                                      onTap: () {
+                                        if (t.transactionType == "تحصيل") {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  ReceivePaymentByIdScreen(
+                                                    paymentNum: t.invoiceNum!,
+                                                    customerId: t.customerId,
+                                                  ),
+                                            ),
+                                          );
+                                        } else {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  CustomerInvoiceByIdScreen(
+                                                    invoiceId: t.invoiceNum!,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  DataCell(Text(t.notes ?? "-")),
+                                  DataCell(Text(
+                                      t.amount?.toStringAsFixed(2) ?? "0")),
+                                  DataCell(Text(
+                                      runningBalance.toStringAsFixed(2))),
                                 ],
-                                rows: filteredData.map((t) {
-                                  if (t.transactionType == 'مبيعات') {
-                                    runningBalance += t.amount ?? 0;
-                                  } else {
-                                    runningBalance -= t.amount ?? 0;
-                                  }
-
-                                  return DataRow(
-                                    cells: [
-                                      DataCell(Text(t.transactionType)),
-                                      DataCell(
-                                        Text(
-                                          dateFormat.format(
-                                            t.dateTime ?? DateTime.now(),
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(Text(t.invoiceNum ?? "-")),
-                                      DataCell(Text(t.notes ?? "-")),
-                                      DataCell(
-                                        Text(
-                                          t.amount?.toStringAsFixed(2) ?? "0",
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(runningBalance.toStringAsFixed(2)),
-                                      ),
-                                    ],
-                                  );
-                                }).toList(),
-                              ),
-                            ),
+                              );
+                            }).toList(),
                           ),
                         ),
                       ),
+                    ),
+                  ),
 
-                      // ================= Total =================
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        color: Colors.grey.shade200,
-                        width: double.infinity,
-                        child: Text(
-                          "${tr("total")} : ${totalAmount.toStringAsFixed(2)}",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                  // ================= Total =================
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    color: Colors.grey.shade200,
+                    width: double.infinity,
+                    child: Text(
+                      "${tr("total")} : ${totalAmount.toStringAsFixed(2)}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
-                    ],
-                  );
-                }
+                    ),
+                  ),
+                ],
+              );
+            }
 
-                return const SizedBox();
-              },
-            ),
+            return const SizedBox();
+          },
+        ),
       ),
     );
   }

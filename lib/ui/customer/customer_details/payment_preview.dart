@@ -21,12 +21,12 @@ import '../../../data/model/customer_transaction_summary_model.dart';
 import '../../../data/model/receive_payment.dart';
 
 class ReceivePaymentByIdScreen extends StatelessWidget {
-  final String paymentId;
+  final String paymentNum;
   final String customerId;
 
   const ReceivePaymentByIdScreen({
     super.key,
-    required this.paymentId,
+    required this.paymentNum,
     required this.customerId,
   });
 
@@ -313,7 +313,7 @@ class ReceivePaymentByIdScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     context.read<ReceivedPaymentInvoiceCubit>().fetchReceivedPaymentById(
       customerId,
-      paymentId,
+      paymentNum,
     );
 
     return Scaffold(

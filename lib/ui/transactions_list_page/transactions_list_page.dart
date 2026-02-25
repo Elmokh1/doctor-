@@ -25,7 +25,7 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
       initialDate: fromDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      locale: context.locale, // تحديد اللغة حسب Easy Localization
+      locale: context.locale,
     );
 
     if (pickedFrom == null) return;
@@ -142,9 +142,11 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                   );
                 }
 
+                // ======= Scroll Rأسي + أفقي =======
                 return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                  scrollDirection: Axis.vertical, // اسكرول رأسي
                   child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal, // اسكرول أفقي
                     child: DataTable(
                       headingRowColor:
                       MaterialStateProperty.all(Colors.blue.shade50),
@@ -164,12 +166,15 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
                         return DataRow(
                           cells: [
                             DataCell(Text(
-                                "${tx.amount} ${"currency".tr()}",
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor))),
-                            DataCell(Text(tx.transactionType ?? "",
-                                style: TextStyle(color: textColor))),
+                              "${tx.amount} ${"currency".tr()}",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor),
+                            )),
+                            DataCell(Text(
+                              tx.transactionType ?? "",
+                              style: TextStyle(color: textColor),
+                            )),
                             DataCell(Text("${tx.cashBoxBefore ?? 0}")),
                             DataCell(Text("${tx.cashBoxAfter ?? 0}")),
                             DataCell(Text(tx.transactionDate != null

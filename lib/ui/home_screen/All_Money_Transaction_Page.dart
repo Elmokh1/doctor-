@@ -181,62 +181,65 @@ class _AllMoneyTransactionsPageState
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      headingRowColor:
-                      MaterialStateProperty.all(Colors.black),
-                      headingTextStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      dataRowColor:
-                      MaterialStateProperty.all(Colors.white),
-                      border: TableBorder.all(
-                        color: Colors.black,
-                        width: 1,
-                      ),
-                      columns: [
-                        DataColumn(label: Text("date".tr())),
-                        DataColumn(label: Text("details".tr())),
-                        DataColumn(label: Text("type".tr())),
-                        DataColumn(label: Text("amount".tr())),
-                        DataColumn(label: Text("direction".tr())),
-                      ],
-                      rows: filteredTransactions.map((t) {
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              Text(
-                                t.transactionDate != null
-                                    ? "${t.transactionDate!.day}/${t.transactionDate!.month}/${t.transactionDate!.year}"
-                                    : "-",
-                              ),
-                            ),
-                            DataCell(
-                              Text(t.transactionDetails ?? ""),
-                            ),
-                            DataCell(
-                              Text(t.transactionType ?? ""),
-                            ),
-                            DataCell(
-                              Text(
-                                t.amount?.toStringAsFixed(2) ?? "0",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                    scrollDirection: Axis.vertical, // اسكرول رأسي
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      scrollDirection: Axis.horizontal, // اسكرول أفقي
+                      child: DataTable(
+                        headingRowColor:
+                        MaterialStateProperty.all(Colors.black),
+                        headingTextStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        dataRowColor:
+                        MaterialStateProperty.all(Colors.white),
+                        border: TableBorder.all(
+                          color: Colors.black,
+                          width: 1,
+                        ),
+                        columns: [
+                          DataColumn(label: Text("date".tr())),
+                          DataColumn(label: Text("details".tr())),
+                          DataColumn(label: Text("type".tr())),
+                          DataColumn(label: Text("amount".tr())),
+                          DataColumn(label: Text("direction".tr())),
+                        ],
+                        rows: filteredTransactions.map((t) {
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  t.transactionDate != null
+                                      ? "${t.transactionDate!.day}/${t.transactionDate!.month}/${t.transactionDate!.year}"
+                                      : "-",
                                 ),
                               ),
-                            ),
-                            DataCell(
-                              Text(
-                                t.isIncome == true
-                                    ? "income".tr()
-                                    : "expense".tr(),
+                              DataCell(
+                                Text(t.transactionDetails ?? ""),
                               ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
+                              DataCell(
+                                Text(t.transactionType ?? ""),
+                              ),
+                              DataCell(
+                                Text(
+                                  t.amount?.toStringAsFixed(2) ?? "0",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  t.isIncome == true
+                                      ? "income".tr()
+                                      : "expense".tr(),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
                 ),
